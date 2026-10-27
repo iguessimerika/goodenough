@@ -1,0 +1,9 @@
+{% extends "app_base.html" %}
+{% block title %}{{ title }} · {{ band.name }}{% endblock %}
+{% block content %}
+<div class="empty">
+  <h1>{{ title }}</h1>
+  <p>{{ text }}</p>
+  <p><a class="btn" href="{{ url_for('songs.index') }}">Go to the songs</a></p>
+</div>
+{% endblock %}

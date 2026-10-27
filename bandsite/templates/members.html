@@ -1,0 +1,14 @@
+{% extends "app_base.html" %}
+{% block title %}Band members · {{ band.name }}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Band members <small>{{ members|length }}</small></h1></div>
+<ul class="member-list">
+  {% for m in members %}
+  <li>
+    <strong>{{ m.name }}</strong>
+    <span class="muted">{{ m.instrument or 'No instrument given' }}{% if m.is_admin %} · Admin{% endif %}</span>
+  </li>
+  {% endfor %}
+</ul>
+<p class="hint" style="margin-top:1.5rem">New members register themselves with the band word.</p>
+{% endblock %}

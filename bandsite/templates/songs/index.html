@@ -1,0 +1,71 @@
+{% extends "app_base.html" %}
+{% block title %}Songs · {{ band.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Songs <small>{{ songs|length }}{% if filtered %} found{% endif %}</small></h1>
+  <a class="btn primary" href="{{ url_for('songs.new') }}">New song</a>
+</div>
+
+<form class="filters" method="get" role="search">
+  <label class="sr-only" for="q">Title or artist</label>
+  <input id="q" type="search" name="q" value="{{ q }}" placeholder="Search title or artist">
+  <label class="sr-only" for="f-phase">Phase</label>
+  <select id="f-phase" name="phase">
+    <option value="">All phases</option>
+    {% for p in phases %}<option value="{{ p.id }}"{% if phase_id == p.id %} selected{% endif %}>{{ p.label }}</option>{% endfor %}
+  </select>
+  <label class="sr-only" for="f-mood">Mood</label>
+  <select id="f-mood" name="mood">
+    <option value="">All moods</option>
+    {% for m in moods %}<option value="{{ m.id }}"{% if mood_id == m.id %} selected{% endif %}>{{ m.label }}</option>{% endfor %}
+  </select>
+  <span>
+    <button class="btn" type="submit">Filter</button>
+    {% if filtered %}<a href="{{ url_for('songs.index') }}">Reset</a>{% endif %}
+  </span>
+</form>
+
+{% if songs %}
+<ul class="song-list">
+  {% for s in songs %}
+  <li class="song-row">
+    <div>
+      <h2><a href="{{ url_for('songs.detail', song_id=s.id) }}">{{ s.title }}</a></h2>
+      <p class="by">{{ s.artist }}{% if s.singers %} · Vocals: {{ s.singers|map(attribute='name')|join(', ') }}{% endif %}</p>
+      <div class="tags">
+        {% if s.phase %}<span class="tag phase">{{ s.phase }}</span>{% endif %}
+        {% if s.mood %}<span class="tag">{{ s.mood }}</span>{% endif %}
+        {% if s.capo %}<span class="tag">Capo {{ s.capo }}</span>{% endif %}
+        {% if s.document_count %}<span class="tag">{{ s.document_count }} sheet{{ '' if s.document_count == 1 else 's' }}</span>{% endif %}
+      </div>
+    </div>
+    <div>
+      {% if s.youtube_id %}
+      <button type="button" class="btn small" data-video="{{ s.youtube_id }}" data-title="{{ s.title }}">Play video</button>
+      {% endif %}
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% elif filtered %}
+<div class="empty">
+  <h2>Nothing found</h2>
+  <p>No song matches this filter. Change the search or <a href="{{ url_for('songs.index') }}">show all songs</a>.</p>
+</div>
+{% else %}
+<div class="empty">
+  <h2>No songs yet</h2>
+  <p>Add your first song with its artist, capo, video and sheet music.</p>
+  <a class="btn primary" href="{{ url_for('songs.new') }}">Add the first song</a>
+</div>
+{% endif %}
+
+<dialog id="video-dialog" aria-labelledby="video-title">
+  <div class="dialog-head">
+    <span id="video-title"></span>
+    <button type="button" class="btn small" id="video-close">Close</button>
+  </div>
+  <div class="video-frame"><iframe id="video-frame" title="YouTube video" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+</dialog>
+<script src="{{ url_for('static', filename='js/video-dialog.js') }}"></script>
+{% endblock %}
