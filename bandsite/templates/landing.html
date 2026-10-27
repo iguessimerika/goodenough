@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ band.name }} – {{ band.tagline }}{% endblock %}
+{% block body %}
+<div class="landing">
+  <nav class="landing-nav" aria-label="Members">
+    {% if current_user.is_authenticated %}
+      <a href="{{ url_for('songs.index') }}">Go to the band area</a>
+    {% else %}
+      <a href="{{ url_for('auth.login') }}">Sign in</a>
+    {% endif %}
+  </nav>
+
+  <header class="hero">
+    <h1 class="tape">{{ band.name }}</h1>
+    <p class="tagline">{{ band.tagline }}</p>
+    <p class="intro">{{ band.intro }}</p>
+  </header>
+
+  <section class="about" aria-labelledby="about-title">
+    <h2 id="about-title">About us</h2>
+    <div>
+      {% for paragraph in band.about %}<p>{{ paragraph }}</p>{% endfor %}
+    </div>
+  </section>
+
+  <footer class="landing-footer"><p>{{ band.contact }}</p></footer>
+</div>
+{% endblock %}

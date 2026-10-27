@@ -1,0 +1,49 @@
+{% extends "app_base.html" %}
+{% block title %}Keywords · {{ band.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Keywords</h1>
+  <form method="post" action="{{ url_for('keywords.new') }}" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="sr-only" for="kw-name">Name of the new keyword</label>
+    <input id="kw-name" name="name" type="text" maxlength="60" placeholder="New keyword, e.g. Key" required>
+    <button class="btn primary" type="submit">Create</button>
+  </form>
+</div>
+<p class="muted">Phase and Mood appear as choices in the song form. You can already create more keywords; they'll become usable on songs later.</p>
+
+{% for kw in keywords %}
+<section class="kw" id="kw-{{ kw.id }}" aria-labelledby="kwt-{{ kw.id }}">
+  <header>
+    <h2 id="kwt-{{ kw.id }}">{{ kw.name }}</h2>
+    {% if not kw.is_fixed %}
+    <form method="post" action="{{ url_for('keywords.delete', keyword_id=kw.id) }}" onsubmit="return confirm('Delete “{{ kw.name }}” with all its values?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="linkbutton small" type="submit">Delete keyword</button>
+    </form>
+    {% endif %}
+  </header>
+  {% if kw['values'] %}
+  <ul>
+    {% for value in kw['values'] %}
+    <li>
+      <span>{{ value.label }}</span>
+      <form method="post" action="{{ url_for('keywords.delete_value', value_id=value.id) }}" onsubmit="return confirm('Delete “{{ value.label }}”? Songs that use it will have no value afterwards.')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" aria-label="Delete {{ value.label }}">×</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No values yet.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('keywords.add_value', keyword_id=kw.id) }}" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="sr-only" for="label-{{ kw.id }}">New value for {{ kw.name }}</label>
+    <input id="label-{{ kw.id }}" name="label" type="text" maxlength="60" placeholder="New value for {{ kw.name }}" required>
+    <button class="btn" type="submit">Add</button>
+  </form>
+</section>
+{% endfor %}
+{% endblock %}

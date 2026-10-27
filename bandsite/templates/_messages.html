@@ -1,0 +1,9 @@
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<ul class="meldungen" role="status">
+  {% for category, text in messages %}
+  <li class="meldung {{ 'error' if category == 'error' else 'ok' }}">{{ text }}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endwith %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ document.filename }} · Sheet music{% endblock %}
+{% block body_class %}editor-page{% endblock %}
+{% block body %}
+<div id="editor" data-tool="hand"
+     data-file="{{ url_for('songs.document_file', document_id=document.id) }}"
+     data-save="{{ url_for('songs.document_annotations', document_id=document.id) }}"
+     data-version="{{ version }}"
+     data-csrf="{{ csrf_token() }}">
+  <header class="ed-bar" role="toolbar" aria-label="Tools">
+    <a class="btn small" href="{{ url_for('songs.detail', song_id=document.song_id) }}">Back to “{{ document.song_title }}”</a>
+    <div class="ed-group" role="group" aria-label="Tool">
+      <button type="button" class="btn small" data-tool="hand" aria-pressed="true">Scroll</button>
+      <button type="button" class="btn small" data-tool="pen" aria-pressed="false">Pen</button>
+      <button type="button" class="btn small" data-tool="marker" aria-pressed="false">Highlighter</button>
+      <button type="button" class="btn small" data-tool="text" aria-pressed="false">Text</button>
+      <button type="button" class="btn small" data-tool="eraser" aria-pressed="false">Eraser</button>
+    </div>
+    <div class="swatches" role="group" aria-label="Color">
+      <button type="button" class="swatch" data-color="#d62828" style="background:#d62828" aria-label="Red" aria-pressed="true"></button>
+      <button type="button" class="swatch" data-color="#1d4ed8" style="background:#1d4ed8" aria-label="Blue" aria-pressed="false"></button>
+      <button type="button" class="swatch" data-color="#15803d" style="background:#15803d" aria-label="Green" aria-pressed="false"></button>
+      <button type="button" class="swatch" data-color="#facc15" style="background:#facc15" aria-label="Yellow" aria-pressed="false"></button>
+      <button type="button" class="swatch" data-color="#111111" style="background:#111111" aria-label="Black" aria-pressed="false"></button>
+    </div>
+    <div class="ed-group">
+      <button type="button" class="btn small" id="ed-undo">Undo</button>
+      <button type="button" class="btn small" id="ed-zoom-out" aria-label="Zoom out">−</button>
+      <button type="button" class="btn small" id="ed-zoom-in" aria-label="Zoom in">+</button>
+    </div>
+    <button type="button" class="btn small primary" id="ed-save">Save</button>
+    <span id="ed-status" role="status">Saved</span>
+  </header>
+  <div class="ed-pages" id="pages"></div>
+  <p class="ed-message" id="ed-message">Loading the sheet music …</p>
+</div>
+<script type="application/json" id="annot-data">{{ annotations|tojson }}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="{{ url_for('static', filename='js/editor.js') }}"></script>
+{% endblock %}

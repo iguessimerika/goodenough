@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block body %}
+{% set tabs = [
+  ('Song', 'songs.index', 'songs.'),
+  ('Setlist', 'main.setlist', 'main.setlist'),
+  ('Rehearsal', 'main.rehearsal', 'main.rehearsal'),
+  ('Band member', 'main.members', 'main.members'),
+  ('Questionnaire', 'main.questionnaire', 'main.questionnaire'),
+  ('Keywords', 'keywords.index', 'keywords.'),
+] %}
+<header class="topbar">
+  <a class="brand" href="{{ url_for('main.landing') }}" aria-label="Back to the home page">{{ band.name }}</a>
+  <nav class="tabs" aria-label="Main menu">
+    {% for label, target, prefix in tabs %}
+    <a href="{{ url_for(target) }}"{% if request.endpoint and request.endpoint.startswith(prefix) %} aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+  <div class="account">
+    <span>{{ current_user.name }}</span>
+    <form method="post" action="{{ url_for('auth.logout') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="linkbutton" type="submit">Sign out</button>
+    </form>
+  </div>
+</header>
+<main class="content">
+  {% include "_flashes.html" %}
+  {% block content %}{% endblock %}
+</main>
+{% endblock %}
