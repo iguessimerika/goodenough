@@ -490,7 +490,7 @@ def list_setlists():
                   (SELECT COUNT(*) FROM set_songs ss JOIN setlist_sets s ON s.id = ss.set_id
                     WHERE s.setlist_id = l.id) AS song_count
            FROM setlists l
-           ORDER BY l.event_date IS NULL, l.event_date DESC, l.name"""
+           ORDER BY l.event_date IS NULL, l.event_date ASC, l.name"""
     )
 
 
