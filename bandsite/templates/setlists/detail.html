@@ -1,0 +1,119 @@
+{% extends "app_base.html" %}
+{% block title %}{{ setlist.name }} · {{ band.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="small"><a href="{{ url_for('setlists.index') }}">All setlists</a></p>
+    <h1>{{ setlist.name }}</h1>
+    <p class="muted" style="margin:.4rem 0 0">{{ setlist.event_date.strftime('%A, %d %B %Y') if setlist.event_date else 'No date yet' }}</p>
+  </div>
+  <div>
+    <a class="btn" href="{{ url_for('setlists.edit', setlist_id=setlist.id) }}">Edit</a>
+    <form method="post" action="{{ url_for('setlists.delete', setlist_id=setlist.id) }}" style="display:inline" onsubmit="return confirm('Permanently delete “{{ setlist.name }}” with all its sets?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn danger" type="submit">Delete</button>
+    </form>
+  </div>
+</div>
+
+{% if setlist.information %}<p style="white-space:pre-wrap">{{ setlist.information }}</p>{% endif %}
+
+{% for one_set in setlist.sets %}
+<section class="set" id="set-{{ one_set.id }}" aria-labelledby="set-title-{{ one_set.id }}">
+  <header class="set-head">
+    <h2 id="set-title-{{ one_set.id }}">{{ one_set.name }}</h2>
+    {% if one_set.mood %}<span class="tag phase">{{ one_set.mood }}</span>{% endif %}
+    <span class="muted">{{ one_set.songs|length }} song{{ '' if one_set.songs|length == 1 else 's' }}</span>
+    <span class="set-tools">
+      <form method="post" action="{{ url_for('setlists.move_set', set_id=one_set.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn small" type="submit" name="direction" value="up" aria-label="Move {{ one_set.name }} up"{% if loop.first %} disabled{% endif %}>↑</button>
+        <button class="btn small" type="submit" name="direction" value="down" aria-label="Move {{ one_set.name }} down"{% if loop.last %} disabled{% endif %}>↓</button>
+      </form>
+    </span>
+  </header>
+
+  {% if one_set.songs %}
+  <ol class="set-songs">
+    {% for entry in one_set.songs %}
+    <li>
+      <div class="set-song-info">
+        <a href="{{ url_for('songs.detail', song_id=entry.song_id) }}">{{ entry.title }}</a>
+        <span class="muted">{{ entry.artist }}</span>
+        {% if entry.capo %}<span class="tag">Capo {{ entry.capo }}</span>{% endif %}
+      </div>
+      <form method="post" class="set-song-tools" action="{{ url_for('setlists.move_song', set_song_id=entry.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn small" type="submit" name="direction" value="up" aria-label="Move {{ entry.title }} up"{% if loop.first %} disabled{% endif %}>↑</button>
+        <button class="btn small" type="submit" name="direction" value="down" aria-label="Move {{ entry.title }} down"{% if loop.last %} disabled{% endif %}>↓</button>
+        <button class="btn small danger" type="submit" formaction="{{ url_for('setlists.remove_song', set_song_id=entry.id) }}" aria-label="Remove {{ entry.title }} from {{ one_set.name }}">Remove</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="muted">No songs in this set yet.</p>
+  {% endif %}
+
+  {% if one_set.available %}
+  <form method="post" action="{{ url_for('setlists.add_song', set_id=one_set.id) }}" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="sr-only" for="song-{{ one_set.id }}">Song to add to {{ one_set.name }}</label>
+    <select id="song-{{ one_set.id }}" name="song_id" required>
+      <option value="">Add a song …</option>
+      {% for s in one_set.available %}<option value="{{ s.id }}">{{ s.title }} – {{ s.artist }}</option>{% endfor %}
+    </select>
+    <button class="btn" type="submit">Add</button>
+  </form>
+  {% elif not has_songs %}
+  <p class="hint">There are no songs yet. <a href="{{ url_for('songs.new') }}">Add a song</a> first.</p>
+  {% else %}
+  <p class="hint">Every song is already in this set.</p>
+  {% endif %}
+
+  <details class="set-settings">
+    <summary>Rename, change mood or delete this set</summary>
+    <form method="post" action="{{ url_for('setlists.update_set', set_id=one_set.id) }}" class="set-settings-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field">
+        <label for="set-name-{{ one_set.id }}">Set name</label>
+        <input id="set-name-{{ one_set.id }}" name="name" type="text" maxlength="80" value="{{ one_set.name }}" required>
+      </div>
+      <div class="field">
+        <label for="set-mood-{{ one_set.id }}">Main mood</label>
+        <select id="set-mood-{{ one_set.id }}" name="mood">
+          <option value="">Not set</option>
+          {% for m in moods %}<option value="{{ m.id }}"{% if one_set.mood_id == m.id %} selected{% endif %}>{{ m.label }}</option>{% endfor %}
+        </select>
+      </div>
+      <button class="btn" type="submit">Save set</button>
+      <button class="btn danger" type="submit" formaction="{{ url_for('setlists.delete_set', set_id=one_set.id) }}" onclick="return confirm('Delete “{{ one_set.name }}” with its song list? The songs themselves stay.')">Delete set</button>
+    </form>
+  </details>
+</section>
+{% else %}
+<div class="empty">
+  <h2>No sets yet</h2>
+  <p>A set is one block of the show, for example Set 1 and Set 2. Add the first one below, then fill it with songs.</p>
+</div>
+{% endfor %}
+
+<section class="add-set" aria-labelledby="add-set-h">
+  <h2 id="add-set-h">Add a set</h2>
+  <form method="post" action="{{ url_for('setlists.add_set', setlist_id=setlist.id) }}" class="add-set-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="new-set-name">Set name</label>
+      <input id="new-set-name" name="name" type="text" maxlength="80" value="{{ next_set_name }}" required>
+    </div>
+    <div class="field">
+      <label for="new-set-mood">Main mood (optional)</label>
+      <select id="new-set-mood" name="mood">
+        <option value="">Not set</option>
+        {% for m in moods %}<option value="{{ m.id }}">{{ m.label }}</option>{% endfor %}
+      </select>
+    </div>
+    <button class="btn primary" type="submit">Add set</button>
+  </form>
+</section>
+{% endblock %}
