@@ -37,12 +37,15 @@ def register():
         flash("Registration isn't enabled yet. Set the BAND_CODE variable.", "error")
         return redirect(url_for("auth.login"))
 
-    values = {"name": "", "email": "", "instrument": ""}
+    instruments = db.list_values(db.INSTRUMENT)
+    values = {"name": "", "email": "", "instrument_ids": []}
     if request.method == "POST":
+        allowed = {i["id"] for i in instruments}
+        chosen = [int(x) for x in request.form.getlist("instruments") if x.isdigit() and int(x) in allowed]
         values = {
             "name": request.form.get("name", "").strip(),
             "email": request.form.get("email", "").strip().lower(),
-            "instrument": request.form.get("instrument", "").strip(),
+            "instrument_ids": list(dict.fromkeys(chosen)),  # no duplicates, keeps the order
         }
         password = request.form.get("password", "")
         code = request.form.get("band_code", "").strip()
@@ -53,8 +56,6 @@ def register():
             errors.append("Enter a name (80 characters at most).")
         if "@" not in values["email"] or len(values["email"]) > 255:
             errors.append("Enter a valid email address.")
-        if len(values["instrument"]) > 80:
-            errors.append("The instrument can have 80 characters at most.")
         if len(password) < 8:
             errors.append("The password needs at least 8 characters.")
         if password != request.form.get("password2", ""):
@@ -68,8 +69,8 @@ def register():
                     values["name"],
                     values["email"],
                     hash_password(password),
-                    values["instrument"] or None,
                     is_admin=db.count_members() == 0,  # the first member becomes admin
+                    instrument_ids=values["instrument_ids"],
                 )
             except mysql.connector.IntegrityError:
                 errors.append("There is already an account with this email address.")
@@ -80,7 +81,7 @@ def register():
                 return redirect(url_for("songs.index"))
         for error in errors:
             flash(error, "error")
-    return render_template("register.html", v=values)
+    return render_template("register.html", v=values, instruments=instruments)
 
 
 @bp.post("/logout")

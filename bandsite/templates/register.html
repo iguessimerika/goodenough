@@ -15,10 +15,17 @@
       <label for="name">Name</label>
       <input id="name" name="name" type="text" maxlength="80" autocomplete="name" value="{{ v.name }}" required>
     </div>
-    <div class="field">
-      <label for="instrument">Instrument (optional)</label>
-      <input id="instrument" name="instrument" type="text" maxlength="80" value="{{ v.instrument }}">
-    </div>
+    {% if instruments %}
+    <fieldset>
+      <legend>Instruments (optional)</legend>
+      <div class="choices">
+        {% for i in instruments %}
+        <label><input type="checkbox" name="instruments" value="{{ i.id }}"{% if i.id in v.instrument_ids %} checked{% endif %}><span>{{ i.label }}</span></label>
+        {% endfor %}
+      </div>
+      <p class="hint">Pick everything you play. You can choose more than one.</p>
+    </fieldset>
+    {% endif %}
     <div class="field">
       <label for="email">Email</label>
       <input id="email" name="email" type="email" autocomplete="email" value="{{ v.email }}" required>

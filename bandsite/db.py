@@ -11,10 +11,12 @@ from flask import g
 
 PHASE = "Phase"
 MOOD = "Mood"
+INSTRUMENT = "Instrument"
 
 DEFAULT_KEYWORDS = {
     PHASE: ["Idea", "Learning", "Almost ready", "Stage-ready"],
     MOOD: ["Calm", "Emotional", "Cheerful", "Energetic", "Dark"],
+    INSTRUMENT: ["Gesang", "Gitarre", "Bass", "Schlagzeug", "Piano"],
 }
 
 
@@ -129,7 +131,6 @@ SCHEMA = [
         name VARCHAR(80) NOT NULL,
         email VARCHAR(255) NOT NULL UNIQUE,
         password_hash VARCHAR(255) NOT NULL,
-        instrument VARCHAR(80) NULL,
         is_admin TINYINT(1) NOT NULL DEFAULT 0,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
@@ -145,6 +146,13 @@ SCHEMA = [
         sort_order INT NOT NULL DEFAULT 0,
         UNIQUE KEY uq_keyword_label (keyword_id, label),
         CONSTRAINT fk_value_keyword FOREIGN KEY (keyword_id) REFERENCES keywords (id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    """CREATE TABLE IF NOT EXISTS member_instruments (
+        member_id INT NOT NULL,
+        value_id INT NOT NULL,
+        PRIMARY KEY (member_id, value_id),
+        CONSTRAINT fk_instrument_member FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE,
+        CONSTRAINT fk_instrument_value FOREIGN KEY (value_id) REFERENCES keyword_values (id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
     """CREATE TABLE IF NOT EXISTS songs (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -254,14 +262,35 @@ def count_members():
 
 
 def list_members():
-    return fetch_all("SELECT id, name, instrument, is_admin FROM members ORDER BY name")
-
-
-def create_member(name, email, password_hash, instrument, is_admin):
-    return insert(
-        "INSERT INTO members (name, email, password_hash, instrument, is_admin) VALUES (%s, %s, %s, %s, %s)",
-        (name, email, password_hash, instrument, 1 if is_admin else 0),
+    """All members, each with an 'instruments' list of labels."""
+    members = fetch_all("SELECT id, name, is_admin FROM members ORDER BY name")
+    rows = fetch_all(
+        """SELECT mi.member_id, v.label
+           FROM member_instruments mi JOIN keyword_values v ON v.id = mi.value_id
+           ORDER BY v.sort_order, v.id"""
     )
+    by_id = {m["id"]: m for m in members}
+    for m in members:
+        m["instruments"] = []
+    for r in rows:
+        by_id[r["member_id"]]["instruments"].append(r["label"])
+    return members
+
+
+def create_member(name, email, password_hash, is_admin, instrument_ids=()):
+    """Creates a member and their instruments in one transaction. Returns the new id."""
+    with transaction() as cursor:
+        cursor.execute(
+            "INSERT INTO members (name, email, password_hash, is_admin) VALUES (%s, %s, %s, %s)",
+            (name, email, password_hash, 1 if is_admin else 0),
+        )
+        member_id = cursor.lastrowid
+        if instrument_ids:
+            cursor.executemany(
+                "INSERT INTO member_instruments (member_id, value_id) VALUES (%s, %s)",
+                [(member_id, value_id) for value_id in instrument_ids],
+            )
+        return member_id
 
 
 # --------------------------------------------------------------------- keywords

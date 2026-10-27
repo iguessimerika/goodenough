@@ -10,7 +10,7 @@
     <button class="btn primary" type="submit">Create</button>
   </form>
 </div>
-<p class="muted">Phase and Mood appear as choices in the song form. You can already create more keywords; they'll become usable on songs later.</p>
+<p class="muted">Phase and Mood appear as choices in the song form, Instrument in the registration form. You can already create more keywords; they'll become usable later.</p>
 
 {% for kw in keywords %}
 <section class="kw" id="kw-{{ kw.id }}" aria-labelledby="kwt-{{ kw.id }}">
@@ -28,7 +28,7 @@
     {% for value in kw['values'] %}
     <li>
       <span>{{ value.label }}</span>
-      <form method="post" action="{{ url_for('keywords.delete_value', value_id=value.id) }}" onsubmit="return confirm('Delete “{{ value.label }}”? Songs that use it will have no value afterwards.')">
+      <form method="post" action="{{ url_for('keywords.delete_value', value_id=value.id) }}" onsubmit="return confirm('Delete “{{ value.label }}”? Songs, sets and members that use it will lose it.')">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" aria-label="Delete {{ value.label }}">×</button>
       </form>
