@@ -1,0 +1,6 @@
+{# Who said what, short. Needs r. #}
+<dl class="people">
+  <div><dt>In</dt><dd>{{ r.yes|map(attribute='name')|join(', ') or '–' }}</dd></div>
+  <div><dt>Out</dt><dd>{{ r.no|map(attribute='name')|join(', ') or '–' }}</dd></div>
+  {% if r.open %}<div class="is-open"><dt>No answer</dt><dd>{{ r.open|map(attribute='name')|join(', ') }}</dd></div>{% endif %}
+</dl>

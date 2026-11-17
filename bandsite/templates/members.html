@@ -2,11 +2,38 @@
 {% block title %}Band members · {{ band.name }}{% endblock %}
 {% block content %}
 <div class="page-head"><h1>Band members <small>{{ members|length }}</small></h1></div>
+
+<section class="food-callout" id="food" aria-labelledby="food-h">
+  <h2 id="food-h">Food duty</h2>
+  {% if food %}
+  <p>Cancelled after Saturday, so these bring food to the next rehearsal:</p>
+  <ul>
+    {% for f in food %}
+    <li>
+      <strong>{{ f.name }}</strong> <span class="muted">for {{ f.rehearsal_date.strftime('%a, %d %b') }}</span>
+      <form method="post" action="{{ url_for('rehearsals.settle_food', duty_id=f.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn small" type="submit">Brought it</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>Nobody owes food right now. Cancel rehearsals by the Saturday before, and it stays that way.</p>
+  {% endif %}
+</section>
+
 <ul class="member-list">
   {% for m in members %}
   <li>
-    <strong>{{ m.name }}</strong>
-    <span class="muted">{{ m.instruments|join(', ') or 'No instrument given' }}{% if m.is_admin %} · Admin{% endif %}</span>
+    <div>
+      <strong>{{ m.name }}</strong>
+      {% if m.owes %}<span class="tag food">Owes food{% if m.owes|length > 1 %} ×{{ m.owes|length }}{% endif %}</span>{% endif %}
+    </div>
+    <span class="muted">
+      {{ m.instruments|join(', ') or 'No instrument given' }}{% if m.is_admin %} · Admin{% endif %}
+      {% if m.brought %} · brought food {{ m.brought }}×{% endif %}
+    </span>
   </li>
   {% endfor %}
 </ul>

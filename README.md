@@ -7,7 +7,8 @@ Made for Railway.
 **Status:** the *Song* area is done (create, edit, delete, search, filter, YouTube, sheet-music PDFs with shared notes).
 *Band member* (list) and *Keywords* (manage Phase and Mood) are kept simple.
 *Setlist* is done, including the sheet music of a set opened in running order.
-*Rehearsal* and *Questionnaire* show a placeholder.
+*Rehearsal* is done: Mondays planned automatically, yes/no answers, food duty for late cancellations.
+*Questionnaire* shows a placeholder.
 
 ## Deploy on Railway
 
@@ -59,6 +60,20 @@ appear, so the order on screen always matches the setlist.
 - **Full screen** hides the browser bars. The screen stays on while the view is open (where the browser supports it).
 - **Download as one PDF** merges all PDFs of a set into one file with a bookmark per song, for apps
   like forScore or for when there's no internet at the venue. The band's notes are not part of that file.
+
+## Rehearsals
+
+- Every Monday for the next three months is created automatically when someone opens *Rehearsal*.
+  A single Monday can be cancelled (e.g. a public holiday); extra days can be added.
+- Every member answers **I'm in** or **Can't make it**. Cancelling is free until the end of the
+  Saturday before (German time). Cancelling later means bringing food to the next rehearsal; this
+  shows up under *Band member* and on the rehearsal page until someone presses **Brought it**.
+  Saying "I'm in" again before the rehearsal drops the food duty; a cancelled rehearsal never costs food.
+- Will it happen? **Yes** when guitar (Gitarre), vocals (Gesang) and drums (Schlagzeug) are in,
+  **Maybe** with at least one singer and one other instrument, otherwise **No**. The rule lives in
+  `outlook()` in `bandsite/views/rehearsals.py` and uses the members' instruments.
+- Past rehearsals are hidden; **Clean up past rehearsals** deletes them (food duties are kept).
+- Each rehearsal can have a setlist, single songs and notes.
 
 ## Good to know
 
