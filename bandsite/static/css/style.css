@@ -221,3 +221,23 @@ body.editor-page { background: #8d9188; }
 #editor[data-tool=eraser] .note:hover { outline: 2px solid var(--danger); }
 
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
+
+/* Setlists */
+.set { margin: 2.5rem 0; padding-top: .9rem; border-top: 3px solid var(--ink); scroll-margin-top: 1rem; }
+.set-head { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin-bottom: .5rem; }
+.set-tools { margin-left: auto; }
+.set-tools form { margin: 0; display: flex; gap: .3rem; }
+.set-songs { list-style: none; counter-reset: pos; margin: 0 0 1rem; padding: 0; }
+.set-songs li { counter-increment: pos; display: grid; grid-template-columns: 2.25rem minmax(0, 1fr) auto; align-items: center; gap: .5rem; padding: .6rem 0; border-bottom: 1px solid var(--line); }
+.set-songs li::before { content: counter(pos); font-stretch: 75%; font-weight: 800; font-size: 1.4rem; color: var(--muted); }
+.set-song-info { display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .75rem; min-width: 0; }
+.set-song-info a { font-weight: 700; font-size: 1.1rem; }
+.set-song-tools { display: flex; gap: .3rem; margin: 0; }
+.set .inline-form { max-width: 36rem; }
+@media (max-width: 560px) { .set-songs li { grid-template-columns: 2rem 1fr; } .set-song-tools { grid-column: 2; } }
+.set-settings { margin-top: 1rem; }
+.set-settings summary { cursor: pointer; font-weight: 600; font-size: .95rem; }
+.set-settings-form { margin-top: .75rem; max-width: 24rem; }
+.add-set { margin-top: 3rem; padding-top: .9rem; border-top: 3px solid var(--ink); }
+.add-set h2 { margin-bottom: .9rem; }
+.add-set-form { max-width: 24rem; }

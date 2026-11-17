@@ -59,5 +59,5 @@ def add_value(keyword_id):
 def delete_value(value_id):
     value = db.get_keyword_value(value_id) or abort(404)
     db.delete_keyword_value(value_id)
-    flash(f"“{value['label']}” deleted. Songs that used it now have no value.", "ok")
+    flash(f"“{value['label']}” deleted. Anything that used it (songs, sets, members) no longer has it.", "ok")
     return redirect(url_for("keywords.index") + f"#kw-{value['keyword_id']}")

@@ -11,10 +11,12 @@ from flask import g
 
 PHASE = "Phase"
 MOOD = "Mood"
+INSTRUMENT = "Instrument"
 
 DEFAULT_KEYWORDS = {
     PHASE: ["Idea", "Learning", "Almost ready", "Stage-ready"],
     MOOD: ["Calm", "Emotional", "Cheerful", "Energetic", "Dark"],
+    INSTRUMENT: ["Gesang", "Gitarre", "Bass", "Schlagzeug", "Piano"],
 }
 
 
@@ -129,7 +131,6 @@ SCHEMA = [
         name VARCHAR(80) NOT NULL,
         email VARCHAR(255) NOT NULL UNIQUE,
         password_hash VARCHAR(255) NOT NULL,
-        instrument VARCHAR(80) NULL,
         is_admin TINYINT(1) NOT NULL DEFAULT 0,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
@@ -145,6 +146,13 @@ SCHEMA = [
         sort_order INT NOT NULL DEFAULT 0,
         UNIQUE KEY uq_keyword_label (keyword_id, label),
         CONSTRAINT fk_value_keyword FOREIGN KEY (keyword_id) REFERENCES keywords (id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    """CREATE TABLE IF NOT EXISTS member_instruments (
+        member_id INT NOT NULL,
+        value_id INT NOT NULL,
+        PRIMARY KEY (member_id, value_id),
+        CONSTRAINT fk_instrument_member FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE,
+        CONSTRAINT fk_instrument_value FOREIGN KEY (value_id) REFERENCES keyword_values (id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
     """CREATE TABLE IF NOT EXISTS songs (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -181,6 +189,34 @@ SCHEMA = [
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT fk_document_song FOREIGN KEY (song_id) REFERENCES songs (id) ON DELETE CASCADE,
         CONSTRAINT fk_document_uploader FOREIGN KEY (uploaded_by) REFERENCES members (id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    """CREATE TABLE IF NOT EXISTS setlists (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(120) NOT NULL,
+        event_date DATE NULL,
+        information TEXT NULL,
+        created_by INT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_setlist_creator FOREIGN KEY (created_by) REFERENCES members (id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    """CREATE TABLE IF NOT EXISTS setlist_sets (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        setlist_id INT NOT NULL,
+        name VARCHAR(80) NOT NULL,
+        position INT NOT NULL,
+        mood_id INT NULL,
+        CONSTRAINT fk_set_setlist FOREIGN KEY (setlist_id) REFERENCES setlists (id) ON DELETE CASCADE,
+        CONSTRAINT fk_set_mood FOREIGN KEY (mood_id) REFERENCES keyword_values (id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    """CREATE TABLE IF NOT EXISTS set_songs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        set_id INT NOT NULL,
+        song_id INT NOT NULL,
+        position INT NOT NULL,
+        UNIQUE KEY uq_song_in_set (set_id, song_id),
+        CONSTRAINT fk_setsong_set FOREIGN KEY (set_id) REFERENCES setlist_sets (id) ON DELETE CASCADE,
+        CONSTRAINT fk_setsong_song FOREIGN KEY (song_id) REFERENCES songs (id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
 ]
 
@@ -226,14 +262,35 @@ def count_members():
 
 
 def list_members():
-    return fetch_all("SELECT id, name, instrument, is_admin FROM members ORDER BY name")
-
-
-def create_member(name, email, password_hash, instrument, is_admin):
-    return insert(
-        "INSERT INTO members (name, email, password_hash, instrument, is_admin) VALUES (%s, %s, %s, %s, %s)",
-        (name, email, password_hash, instrument, 1 if is_admin else 0),
+    """All members, each with an 'instruments' list of labels."""
+    members = fetch_all("SELECT id, name, is_admin FROM members ORDER BY name")
+    rows = fetch_all(
+        """SELECT mi.member_id, v.label
+           FROM member_instruments mi JOIN keyword_values v ON v.id = mi.value_id
+           ORDER BY v.sort_order, v.id"""
     )
+    by_id = {m["id"]: m for m in members}
+    for m in members:
+        m["instruments"] = []
+    for r in rows:
+        by_id[r["member_id"]]["instruments"].append(r["label"])
+    return members
+
+
+def create_member(name, email, password_hash, is_admin, instrument_ids=()):
+    """Creates a member and their instruments in one transaction. Returns the new id."""
+    with transaction() as cursor:
+        cursor.execute(
+            "INSERT INTO members (name, email, password_hash, is_admin) VALUES (%s, %s, %s, %s)",
+            (name, email, password_hash, 1 if is_admin else 0),
+        )
+        member_id = cursor.lastrowid
+        if instrument_ids:
+            cursor.executemany(
+                "INSERT INTO member_instruments (member_id, value_id) VALUES (%s, %s)",
+                [(member_id, value_id) for value_id in instrument_ids],
+            )
+        return member_id
 
 
 # --------------------------------------------------------------------- keywords
@@ -451,6 +508,159 @@ def save_annotations(document_id, annotations_json, expected_version):
         (annotations_json, document_id, expected_version),
     )
     return changed == 1
+
+
+# --------------------------------------------------------------------- setlists
+
+def list_setlists():
+    return fetch_all(
+        """SELECT l.id, l.name, l.event_date, l.information,
+                  (SELECT COUNT(*) FROM setlist_sets s WHERE s.setlist_id = l.id) AS set_count,
+                  (SELECT COUNT(*) FROM set_songs ss JOIN setlist_sets s ON s.id = ss.set_id
+                    WHERE s.setlist_id = l.id) AS song_count
+           FROM setlists l
+           ORDER BY l.event_date IS NULL, l.event_date ASC, l.name"""
+    )
+
+
+def get_setlist(setlist_id):
+    """A setlist with its 'sets' (ordered), each with a 'songs' list (ordered)."""
+    setlist = fetch_one(
+        "SELECT id, name, event_date, information FROM setlists WHERE id = %s", (setlist_id,)
+    )
+    if setlist is None:
+        return None
+    sets = fetch_all(
+        """SELECT s.id, s.name, s.position, s.mood_id, m.label AS mood
+           FROM setlist_sets s LEFT JOIN keyword_values m ON m.id = s.mood_id
+           WHERE s.setlist_id = %s
+           ORDER BY s.position, s.id""",
+        (setlist_id,),
+    )
+    rows = fetch_all(
+        """SELECT ss.id, ss.set_id, ss.song_id, so.title, so.artist, so.capo
+           FROM set_songs ss
+           JOIN setlist_sets s ON s.id = ss.set_id
+           JOIN songs so ON so.id = ss.song_id
+           WHERE s.setlist_id = %s
+           ORDER BY ss.position, ss.id""",
+        (setlist_id,),
+    )
+    by_set = {s["id"]: s for s in sets}
+    for s in sets:
+        s["songs"] = []
+    for r in rows:
+        by_set[r["set_id"]]["songs"].append(r)
+    setlist["sets"] = sets
+    return setlist
+
+
+def create_setlist(name, event_date, information, created_by):
+    return insert(
+        "INSERT INTO setlists (name, event_date, information, created_by) VALUES (%s, %s, %s, %s)",
+        (name, event_date, information or None, created_by),
+    )
+
+
+def update_setlist(setlist_id, name, event_date, information):
+    return execute(
+        "UPDATE setlists SET name = %s, event_date = %s, information = %s WHERE id = %s",
+        (name, event_date, information or None, setlist_id),
+    )
+
+
+def delete_setlist(setlist_id):
+    return execute("DELETE FROM setlists WHERE id = %s", (setlist_id,))
+
+
+def get_set(set_id):
+    return fetch_one(
+        "SELECT id, setlist_id, name, position, mood_id FROM setlist_sets WHERE id = %s", (set_id,)
+    )
+
+
+def create_set(setlist_id, name, mood_id):
+    """Adds a set at the end of the setlist."""
+    return insert(
+        """INSERT INTO setlist_sets (setlist_id, name, position, mood_id)
+           SELECT %s, %s, COALESCE(MAX(position), 0) + 1, %s FROM setlist_sets WHERE setlist_id = %s""",
+        (setlist_id, name, mood_id, setlist_id),
+    )
+
+
+def update_set(set_id, name, mood_id):
+    return execute("UPDATE setlist_sets SET name = %s, mood_id = %s WHERE id = %s", (name, mood_id, set_id))
+
+
+def delete_set(set_id):
+    return execute("DELETE FROM setlist_sets WHERE id = %s", (set_id,))
+
+
+def song_exists(song_id):
+    return fetch_one("SELECT id FROM songs WHERE id = %s", (song_id,)) is not None
+
+
+def list_song_choices():
+    """All songs, slim, for the 'add a song' dropdowns."""
+    return fetch_all("SELECT id, title, artist FROM songs ORDER BY title, artist")
+
+
+def add_song_to_set(set_id, song_id):
+    """Adds a song at the end of the set. Raises IntegrityError if it is already in the set."""
+    return insert(
+        """INSERT INTO set_songs (set_id, song_id, position)
+           SELECT %s, %s, COALESCE(MAX(position), 0) + 1 FROM set_songs WHERE set_id = %s""",
+        (set_id, song_id, set_id),
+    )
+
+
+def get_set_song(set_song_id):
+    return fetch_one(
+        """SELECT ss.id, ss.set_id, s.setlist_id
+           FROM set_songs ss JOIN setlist_sets s ON s.id = ss.set_id
+           WHERE ss.id = %s""",
+        (set_song_id,),
+    )
+
+
+def remove_song_from_set(set_song_id):
+    return execute("DELETE FROM set_songs WHERE id = %s", (set_song_id,))
+
+
+def _move(table, group_column, row_id, direction):
+    """Swaps a row with its neighbour inside the same group. Table and column names come from code only."""
+    if direction not in ("up", "down"):
+        return False
+    comparison, order = ("<", "DESC") if direction == "up" else (">", "ASC")
+    with transaction() as cursor:
+        cursor.execute(
+            f"SELECT id, {group_column} AS group_id, position FROM {table} WHERE id = %s FOR UPDATE",
+            (row_id,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return False
+        cursor.execute(
+            f"""SELECT id, position FROM {table}
+                WHERE {group_column} = %s
+                  AND (position {comparison} %s OR (position = %s AND id {comparison} %s))
+                ORDER BY position {order}, id {order} LIMIT 1""",
+            (row["group_id"], row["position"], row["position"], row["id"]),
+        )
+        other = cursor.fetchone()
+        if other is None:
+            return False
+        cursor.execute(f"UPDATE {table} SET position = %s WHERE id = %s", (other["position"], row["id"]))
+        cursor.execute(f"UPDATE {table} SET position = %s WHERE id = %s", (row["position"], other["id"]))
+        return True
+
+
+def move_set(set_id, direction):
+    return _move("setlist_sets", "setlist_id", set_id, direction)
+
+
+def move_set_song(set_song_id, direction):
+    return _move("set_songs", "set_id", set_song_id, direction)
 
 
 if __name__ == "__main__":

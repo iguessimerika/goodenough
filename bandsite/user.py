@@ -12,7 +12,6 @@ class Member(UserMixin):
         self.id = row["id"]
         self.name = row["name"]
         self.email = row["email"]
-        self.instrument = row.get("instrument")
         self.is_admin = bool(row.get("is_admin"))
         self.password_hash = row["password_hash"]
 

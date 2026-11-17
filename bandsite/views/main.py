@@ -21,12 +21,6 @@ def _soon(title, text):
     return render_template("soon.html", title=title, text=text)
 
 
-@bp.get("/setlist")
-@login_required
-def setlist():
-    return _soon("Setlist", "This is where you'll put together the running order for gigs.")
-
-
 @bp.get("/rehearsal")
 @login_required
 def rehearsal():

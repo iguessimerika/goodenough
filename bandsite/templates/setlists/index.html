@@ -1,0 +1,31 @@
+{% extends "app_base.html" %}
+{% block title %}Setlists · {{ band.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Setlists <small>{{ setlists|length }}</small></h1>
+  <a class="btn primary" href="{{ url_for('setlists.new') }}">New setlist</a>
+</div>
+
+{% if setlists %}
+<ul class="song-list">
+  {% for l in setlists %}
+  <li class="song-row">
+    <div>
+      <h2><a href="{{ url_for('setlists.detail', setlist_id=l.id) }}">{{ l.name }}</a></h2>
+      <p class="by">{{ l.event_date.strftime('%a, %d %b %Y') if l.event_date else 'No date yet' }}</p>
+      <div class="tags">
+        <span class="tag">{{ l.set_count }} set{{ '' if l.set_count == 1 else 's' }}</span>
+        <span class="tag">{{ l.song_count }} song{{ '' if l.song_count == 1 else 's' }}</span>
+      </div>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty">
+  <h2>No setlists yet</h2>
+  <p>Create a setlist for a gig or a rehearsal run, then split it into sets and fill them with your songs.</p>
+  <a class="btn primary" href="{{ url_for('setlists.new') }}">Create the first setlist</a>
+</div>
+{% endif %}
+{% endblock %}

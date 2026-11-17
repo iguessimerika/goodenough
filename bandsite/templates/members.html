@@ -6,7 +6,7 @@
   {% for m in members %}
   <li>
     <strong>{{ m.name }}</strong>
-    <span class="muted">{{ m.instrument or 'No instrument given' }}{% if m.is_admin %} · Admin{% endif %}</span>
+    <span class="muted">{{ m.instruments|join(', ') or 'No instrument given' }}{% if m.is_admin %} · Admin{% endif %}</span>
   </li>
   {% endfor %}
 </ul>

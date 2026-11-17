@@ -1,0 +1,24 @@
+{% extends "app_base.html" %}
+{% block title %}{{ 'Edit setlist' if setlist else 'New setlist' }} · {{ band.name }}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ 'Edit setlist' if setlist else 'New setlist' }}</h1></div>
+
+<form method="post" style="max-width:40rem">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="field">
+    <label for="name">Name</label>
+    <input id="name" name="name" type="text" maxlength="120" value="{{ v.name }}" required autofocus>
+  </div>
+  <div class="field" style="max-width:14rem">
+    <label for="event_date">Date of the event (optional)</label>
+    <input id="event_date" name="event_date" type="date" value="{{ v.event_date.isoformat() if v.event_date else '' }}">
+  </div>
+  <div class="field">
+    <label for="information">Information</label>
+    <textarea id="information" name="information" maxlength="5000">{{ v.information }}</textarea>
+    <p class="hint">For example venue, load-in time, how long you play.</p>
+  </div>
+  <button class="btn primary" type="submit">{{ 'Save changes' if setlist else 'Create setlist' }}</button>
+  <a class="btn" href="{{ url_for('setlists.detail', setlist_id=setlist.id) if setlist else url_for('setlists.index') }}">Cancel</a>
+</form>
+{% endblock %}

@@ -41,12 +41,13 @@ def create_app():
     login_manager.login_message = "Please sign in."
 
     from . import db, user  # noqa: F401  (user registers the login loader)
-    from .views import auth, keywords, main, songs
+    from .views import auth, keywords, main, setlists, songs
 
     app.teardown_appcontext(db.close_db)
     app.register_blueprint(main.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(songs.bp)
+    app.register_blueprint(setlists.bp)
     app.register_blueprint(keywords.bp)
 
     @app.context_processor
