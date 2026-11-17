@@ -1,0 +1,117 @@
+{% extends "app_base.html" %}
+{% block title %}Rehearsal {{ r.rehearsal_date.strftime('%d %b') }} · {{ band.name }}{% endblock %}
+{% block content %}
+{% set state_labels = {'yes': 'Yes', 'maybe': 'Maybe', 'no': 'No', 'cancelled': 'Cancelled'} %}
+{% set back = 'detail' %}
+<div class="page-head">
+  <div>
+    <p class="small"><a href="{{ url_for('rehearsals.index') }}#rehearsal-{{ r.id }}">All rehearsals</a></p>
+    <h1>{{ r.rehearsal_date.strftime('%A, %d %B') }}</h1>
+    <p class="rehearsal-status" style="margin-top:.5rem">
+      <span class="state-badge state-{{ r.state }}">{{ state_labels[r.state] }}</span>
+      <span class="muted">{{ r.state_text }}</span>
+    </p>
+  </div>
+  <div class="rehearsal-me">{% include "rehearsals/_answer.html" %}</div>
+</div>
+
+{% if not r.is_cancelled %}
+<div class="response-columns">
+  <section aria-labelledby="in-h">
+    <h2 id="in-h">In <small>{{ r.yes|length }}</small></h2>
+    <ul>{% for m in r.yes %}<li><strong>{{ m.name }}</strong> <span class="muted">{{ m.instruments_text }}</span></li>{% else %}<li class="muted">Nobody yet</li>{% endfor %}</ul>
+  </section>
+  <section aria-labelledby="out-h">
+    <h2 id="out-h">Out <small>{{ r.no|length }}</small></h2>
+    <ul>{% for m in r.no %}<li><strong>{{ m.name }}</strong> <span class="muted">{{ m.instruments_text }}</span>{% if m.id in late %} <span class="tag food">Brings food</span>{% endif %}</li>{% else %}<li class="muted">Nobody</li>{% endfor %}</ul>
+  </section>
+  <section aria-labelledby="open-h">
+    <h2 id="open-h">No answer <small>{{ r.open|length }}</small></h2>
+    <ul>{% for m in r.open %}<li>{{ m.name }}</li>{% else %}<li class="muted">Everyone has answered</li>{% endfor %}</ul>
+  </section>
+</div>
+{% endif %}
+
+<section class="rehearsal-section" aria-labelledby="plan-h">
+  <h2 id="plan-h">What we rehearse</h2>
+  <form method="post" action="{{ url_for('rehearsals.plan', rehearsal_id=r.id) }}" class="plan-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="field">
+      <label for="setlist">Setlist</label>
+      <select id="setlist" name="setlist_id">
+        <option value="">No setlist</option>
+        {% for l in setlists %}<option value="{{ l.id }}"{% if r.setlist_id == l.id %} selected{% endif %}>{{ l.name }}{% if l.event_date %} ({{ l.event_date.strftime('%d %b %Y') }}){% endif %}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="notes">Notes</label>
+      <textarea id="notes" name="notes" maxlength="5000" placeholder="e.g. work on the bridge of Zombie, new intro for Creep">{{ r.notes or '' }}</textarea>
+    </div>
+    <button class="btn primary" type="submit">Save plan</button>
+  </form>
+  {% if r.setlist_id %}
+  <p style="margin-top:1rem">
+    <a class="btn small" href="{{ url_for('setlists.detail', setlist_id=r.setlist_id) }}">Open setlist “{{ r.setlist_name }}”</a>
+    {% if has_sheets %}<a class="btn small primary" href="{{ url_for('setlists.sheets', setlist_id=r.setlist_id) }}">Open sheet music</a>{% endif %}
+  </p>
+  {% endif %}
+
+  <h3 style="margin-top:1.75rem">Single songs</h3>
+  {% if r.songs %}
+  <ul class="set-songs plain">
+    {% for s in r.songs %}
+    <li>
+      <div class="set-song-info">
+        <a href="{{ url_for('songs.detail', song_id=s.id) }}">{{ s.title }}</a>
+        <span class="muted">{{ s.artist }}</span>
+        {% if s.capo %}<span class="tag">Capo {{ s.capo }}</span>{% endif %}
+      </div>
+      <form method="post" class="set-song-tools" action="{{ url_for('rehearsals.remove_song', rehearsal_id=r.id, song_id=s.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn small danger" type="submit" aria-label="Remove {{ s.title }}">Remove</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No single songs planned.</p>
+  {% endif %}
+  {% if songs %}
+  <form method="post" action="{{ url_for('rehearsals.add_song', rehearsal_id=r.id) }}" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="sr-only" for="add-song">Song to rehearse</label>
+    <select id="add-song" name="song_id" required>
+      <option value="">Add a song …</option>
+      {% for s in songs %}<option value="{{ s.id }}">{{ s.title }} – {{ s.artist }}</option>{% endfor %}
+    </select>
+    <button class="btn" type="submit">Add</button>
+  </form>
+  {% endif %}
+</section>
+
+<section class="rehearsal-section" aria-labelledby="cancel-h">
+  {% if r.is_cancelled %}
+  <h2 id="cancel-h">Cancelled</h2>
+  {% if r.cancel_reason %}<p>{{ r.cancel_reason }}</p>{% endif %}
+  {% if not r.is_past %}
+  <form method="post" action="{{ url_for('rehearsals.cancel', rehearsal_id=r.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn" type="submit" name="action" value="restore">Rehearsal takes place after all</button>
+  </form>
+  {% endif %}
+  {% elif not r.is_past %}
+  <details>
+    <summary id="cancel-h">Cancel this rehearsal for everyone</summary>
+    <form method="post" action="{{ url_for('rehearsals.cancel', rehearsal_id=r.id) }}" class="plan-form" style="margin-top:.75rem">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field">
+        <label for="reason">Reason <span class="muted">(optional)</span></label>
+        <input id="reason" name="reason" type="text" maxlength="200" placeholder="e.g. public holiday, room not available">
+      </div>
+      <button class="btn danger" type="submit" name="action" value="cancel">Cancel rehearsal</button>
+      <p class="hint">Nobody owes food for a cancelled rehearsal.</p>
+    </form>
+  </details>
+  {% endif %}
+</section>
+{% endblock %}

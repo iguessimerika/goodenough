@@ -14,17 +14,17 @@ def landing():
 @bp.get("/members")
 @login_required
 def members():
-    return render_template("members.html", members=db.list_members())
+    members = db.list_members()
+    duties = db.list_open_food_duties()
+    brought = db.food_brought_counts()
+    for m in members:
+        m["owes"] = [d for d in duties if d["member_id"] == m["id"]]
+        m["brought"] = brought.get(m["id"], 0)
+    return render_template("members.html", members=members, food=duties)
 
 
 def _soon(title, text):
     return render_template("soon.html", title=title, text=text)
-
-
-@bp.get("/rehearsal")
-@login_required
-def rehearsal():
-    return _soon("Rehearsal", "This is where you'll plan rehearsal dates and what you'll work on.")
 
 
 @bp.get("/questionnaire")

@@ -225,6 +225,46 @@ SCHEMA = [
         CONSTRAINT fk_pin_setlist FOREIGN KEY (setlist_id) REFERENCES setlists (id) ON DELETE CASCADE,
         CONSTRAINT fk_pin_member FOREIGN KEY (pinned_by) REFERENCES members (id) ON DELETE SET NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    """CREATE TABLE IF NOT EXISTS rehearsals (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        rehearsal_date DATE NOT NULL UNIQUE,
+        is_cancelled TINYINT(1) NOT NULL DEFAULT 0,
+        cancel_reason VARCHAR(200) NULL,
+        setlist_id INT NULL,
+        notes TEXT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_rehearsal_setlist FOREIGN KEY (setlist_id) REFERENCES setlists (id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    """CREATE TABLE IF NOT EXISTS rehearsal_responses (
+        rehearsal_id INT NOT NULL,
+        member_id INT NOT NULL,
+        status VARCHAR(3) NOT NULL,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (rehearsal_id, member_id),
+        CONSTRAINT fk_response_rehearsal FOREIGN KEY (rehearsal_id) REFERENCES rehearsals (id) ON DELETE CASCADE,
+        CONSTRAINT fk_response_member FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    """CREATE TABLE IF NOT EXISTS rehearsal_songs (
+        rehearsal_id INT NOT NULL,
+        song_id INT NOT NULL,
+        position INT NOT NULL,
+        PRIMARY KEY (rehearsal_id, song_id),
+        CONSTRAINT fk_rsong_rehearsal FOREIGN KEY (rehearsal_id) REFERENCES rehearsals (id) ON DELETE CASCADE,
+        CONSTRAINT fk_rsong_song FOREIGN KEY (song_id) REFERENCES songs (id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    # Kept apart from rehearsals so "Clean up" can delete old rehearsals without losing who still owes food.
+    """CREATE TABLE IF NOT EXISTS food_duties (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        member_id INT NOT NULL,
+        rehearsal_id INT NULL,
+        rehearsal_date DATE NOT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        settled_at DATETIME NULL,
+        settled_by INT NULL,
+        CONSTRAINT fk_food_member FOREIGN KEY (member_id) REFERENCES members (id) ON DELETE CASCADE,
+        CONSTRAINT fk_food_rehearsal FOREIGN KEY (rehearsal_id) REFERENCES rehearsals (id) ON DELETE SET NULL,
+        CONSTRAINT fk_food_settler FOREIGN KEY (settled_by) REFERENCES members (id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
 ]
 
 
@@ -773,6 +813,218 @@ def list_pinned_setlists():
                           WHERE s.setlist_id = l.id) AS has_sheets
            FROM pinned_setlists p JOIN setlists l ON l.id = p.setlist_id
            ORDER BY p.pinned_at DESC, l.id DESC"""
+    )
+
+
+# --------------------------------------------------------------------- rehearsals
+
+def ensure_rehearsals(dates):
+    """Creates a rehearsal for every given date that doesn't have one yet. Safe to call on every visit."""
+    if not dates:
+        return
+    existing = {
+        r["rehearsal_date"]
+        for r in fetch_all(
+            "SELECT rehearsal_date FROM rehearsals WHERE rehearsal_date BETWEEN %s AND %s",
+            (min(dates), max(dates)),
+        )
+    }
+    missing = [d for d in dates if d not in existing]
+    if missing:
+        # IGNORE only matters if two band members open the page at the same moment.
+        with transaction() as cursor:
+            cursor.executemany(
+                "INSERT IGNORE INTO rehearsals (rehearsal_date) VALUES (%s)", [(d,) for d in missing]
+            )
+
+
+def list_rehearsals(from_date=None):
+    """Rehearsals in ascending date order (from from_date on, if given), each with its responses."""
+    where, params = ("WHERE r.rehearsal_date >= %s", (from_date,)) if from_date else ("", ())
+    rehearsals = fetch_all(
+        f"""SELECT r.id, r.rehearsal_date, r.is_cancelled, r.cancel_reason, r.setlist_id, r.notes,
+                   l.name AS setlist_name,
+                   (SELECT COUNT(*) FROM rehearsal_songs rs WHERE rs.rehearsal_id = r.id) AS song_count
+            FROM rehearsals r LEFT JOIN setlists l ON l.id = r.setlist_id
+            {where}
+            ORDER BY r.rehearsal_date ASC""",
+        params,
+    )
+    _attach_responses(rehearsals)
+    return rehearsals
+
+
+def count_past_rehearsals(before_date):
+    return fetch_one(
+        "SELECT COUNT(*) AS n FROM rehearsals WHERE rehearsal_date < %s", (before_date,)
+    )["n"]
+
+
+def get_rehearsal(rehearsal_id):
+    rehearsal = fetch_one(
+        """SELECT r.id, r.rehearsal_date, r.is_cancelled, r.cancel_reason, r.setlist_id, r.notes,
+                  l.name AS setlist_name
+           FROM rehearsals r LEFT JOIN setlists l ON l.id = r.setlist_id
+           WHERE r.id = %s""",
+        (rehearsal_id,),
+    )
+    if rehearsal is None:
+        return None
+    _attach_responses([rehearsal])
+    rehearsal["songs"] = fetch_all(
+        """SELECT so.id, so.title, so.artist, so.capo
+           FROM rehearsal_songs rs JOIN songs so ON so.id = rs.song_id
+           WHERE rs.rehearsal_id = %s ORDER BY rs.position, so.title""",
+        (rehearsal_id,),
+    )
+    return rehearsal
+
+
+def _attach_responses(rehearsals):
+    """Adds 'responses': {member_id: 'yes' | 'no'} to every rehearsal."""
+    for r in rehearsals:
+        r["responses"] = {}
+    ids = [r["id"] for r in rehearsals]
+    if not ids:
+        return
+    by_id = {r["id"]: r for r in rehearsals}
+    for row in fetch_all(
+        f"""SELECT rehearsal_id, member_id, status FROM rehearsal_responses
+            WHERE rehearsal_id IN ({_in_clause(ids)})""",
+        tuple(ids),
+    ):
+        by_id[row["rehearsal_id"]]["responses"][row["member_id"]] = row["status"]
+
+
+def create_rehearsal(rehearsal_date):
+    """Adds an extra rehearsal. Returns its id, or None if there already is one that day."""
+    existing = fetch_one("SELECT id FROM rehearsals WHERE rehearsal_date = %s", (rehearsal_date,))
+    if existing:
+        return None
+    return insert("INSERT INTO rehearsals (rehearsal_date) VALUES (%s)", (rehearsal_date,))
+
+
+def update_rehearsal_plan(rehearsal_id, setlist_id, notes):
+    return execute(
+        "UPDATE rehearsals SET setlist_id = %s, notes = %s WHERE id = %s",
+        (setlist_id, notes or None, rehearsal_id),
+    )
+
+
+def set_rehearsal_cancelled(rehearsal_id, cancelled, reason):
+    """Cancels (or restores) a rehearsal. Food owed for a cancelled rehearsal is dropped."""
+    with transaction() as cursor:
+        cursor.execute(
+            "UPDATE rehearsals SET is_cancelled = %s, cancel_reason = %s WHERE id = %s",
+            (1 if cancelled else 0, (reason or None) if cancelled else None, rehearsal_id),
+        )
+        if cancelled:
+            cursor.execute(
+                "DELETE FROM food_duties WHERE rehearsal_id = %s AND settled_at IS NULL", (rehearsal_id,)
+            )
+
+
+def delete_past_rehearsals(before_date):
+    """Deletes rehearsals before the date. Food duties stay (their rehearsal link becomes empty)."""
+    return execute("DELETE FROM rehearsals WHERE rehearsal_date < %s", (before_date,))
+
+
+def add_song_to_rehearsal(rehearsal_id, song_id):
+    return execute(
+        """INSERT IGNORE INTO rehearsal_songs (rehearsal_id, song_id, position)
+           SELECT %s, %s, COALESCE(MAX(position), 0) + 1 FROM rehearsal_songs WHERE rehearsal_id = %s""",
+        (rehearsal_id, song_id, rehearsal_id),
+    )
+
+
+def remove_song_from_rehearsal(rehearsal_id, song_id):
+    return execute(
+        "DELETE FROM rehearsal_songs WHERE rehearsal_id = %s AND song_id = %s", (rehearsal_id, song_id)
+    )
+
+
+def set_response(rehearsal_id, member_id, status, late):
+    """Saves a yes/no answer. Returns True if this answer means the member now owes food.
+
+    Owing food: saying no after the deadline when you hadn't said no before.
+    Saying yes again (you come after all) drops the open food duty for this rehearsal.
+    """
+    with transaction() as cursor:
+        cursor.execute(
+            """SELECT status FROM rehearsal_responses
+               WHERE rehearsal_id = %s AND member_id = %s FOR UPDATE""",
+            (rehearsal_id, member_id),
+        )
+        row = cursor.fetchone()
+        previous = row["status"] if row else None
+        cursor.execute(
+            """INSERT INTO rehearsal_responses (rehearsal_id, member_id, status) VALUES (%s, %s, %s)
+               ON DUPLICATE KEY UPDATE status = %s""",
+            (rehearsal_id, member_id, status, status),
+        )
+        owes = False
+        if status == "no" and previous != "no" and late:
+            cursor.execute(
+                """INSERT INTO food_duties (member_id, rehearsal_id, rehearsal_date)
+                   SELECT %s, id, rehearsal_date FROM rehearsals WHERE id = %s""",
+                (member_id, rehearsal_id),
+            )
+            owes = True
+        elif status == "yes":
+            cursor.execute(
+                """DELETE FROM food_duties
+                   WHERE member_id = %s AND rehearsal_id = %s AND settled_at IS NULL""",
+                (member_id, rehearsal_id),
+            )
+        return owes
+
+
+def list_member_instruments():
+    """{member_id: set of instrument labels}."""
+    result = {}
+    for r in fetch_all(
+        """SELECT mi.member_id, v.label FROM member_instruments mi
+           JOIN keyword_values v ON v.id = mi.value_id"""
+    ):
+        result.setdefault(r["member_id"], set()).add(r["label"])
+    return result
+
+
+# --------------------------------------------------------------------- food duty
+
+def list_open_food_duties():
+    """Unsettled food duties, oldest first, with the member's name."""
+    return fetch_all(
+        """SELECT f.id, f.member_id, m.name, f.rehearsal_date
+           FROM food_duties f JOIN members m ON m.id = f.member_id
+           WHERE f.settled_at IS NULL
+           ORDER BY f.rehearsal_date, f.id"""
+    )
+
+
+def food_brought_counts():
+    """{member_id: how often they have brought food}."""
+    return {
+        r["member_id"]: r["n"]
+        for r in fetch_all(
+            """SELECT member_id, COUNT(*) AS n FROM food_duties
+               WHERE settled_at IS NOT NULL GROUP BY member_id"""
+        )
+    }
+
+
+def get_food_duty(duty_id):
+    return fetch_one(
+        """SELECT f.id, f.member_id, m.name, f.rehearsal_date, f.settled_at
+           FROM food_duties f JOIN members m ON m.id = f.member_id WHERE f.id = %s""",
+        (duty_id,),
+    )
+
+
+def settle_food_duty(duty_id, settled_by):
+    return execute(
+        "UPDATE food_duties SET settled_at = CURRENT_TIMESTAMP, settled_by = %s WHERE id = %s AND settled_at IS NULL",
+        (settled_by, duty_id),
     )
 
 

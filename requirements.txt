@@ -5,3 +5,4 @@ mysql-connector-python>=9.0
 gunicorn>=22
 python-dotenv>=1.0
 pypdf>=4.0
+tzdata>=2024.1

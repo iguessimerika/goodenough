@@ -1,0 +1,85 @@
+{% extends "app_base.html" %}
+{% block title %}Rehearsals · {{ band.name }}{% endblock %}
+{% block content %}
+{% set state_labels = {'yes': 'Yes', 'maybe': 'Maybe', 'no': 'No', 'cancelled': 'Cancelled'} %}
+<div class="page-head">
+  <div>
+    <h1>Rehearsals</h1>
+    <p class="muted" style="margin:.4rem 0 0">Every Monday, planned three months ahead. Cancel by the Saturday before, or you bring food.</p>
+  </div>
+</div>
+
+{% if food %}
+<section class="food-callout" aria-labelledby="food-h">
+  <h2 id="food-h">Bringing food{% if next_rehearsal %} on {{ next_rehearsal.rehearsal_date.strftime('%a, %d %b') }}{% endif %}</h2>
+  <ul>
+    {% for f in food %}
+    <li>
+      <strong>{{ f.name }}</strong> <span class="muted">cancelled late for {{ f.rehearsal_date.strftime('%d %b') }}</span>
+      <form method="post" action="{{ url_for('rehearsals.settle_food', duty_id=f.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="back" value="rehearsals">
+        <button class="btn small" type="submit">Brought it</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<div class="rehearsal-filter">
+  {% if show_past %}
+  <a class="btn small" href="{{ url_for('rehearsals.index') }}">Hide past rehearsals</a>
+  {% elif past_count %}
+  <a class="btn small" href="{{ url_for('rehearsals.index', past=1) }}">Show past rehearsals ({{ past_count }})</a>
+  {% endif %}
+  {% if past_count %}
+  <form method="post" action="{{ url_for('rehearsals.cleanup') }}" onsubmit="return confirm('Delete {{ past_count }} past rehearsal{{ '' if past_count == 1 else 's' }} with their answers? Who still owes food is kept.')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn small danger" type="submit">Clean up past rehearsals</button>
+  </form>
+  {% endif %}
+</div>
+
+<ol class="rehearsal-list">
+  {% for r in rehearsals %}
+  {% set back = 'index' %}
+  <li id="rehearsal-{{ r.id }}" class="rehearsal state-{{ r.state }}{% if r.is_past %} is-past{% endif %}{% if next_rehearsal and r.id == next_rehearsal.id %} is-next{% endif %}">
+    <a class="rehearsal-date" href="{{ url_for('rehearsals.detail', rehearsal_id=r.id) }}">
+      <span class="wd">{{ r.rehearsal_date.strftime('%a') }}</span>
+      <span class="day">{{ r.rehearsal_date.strftime('%d') }}</span>
+      <span class="mon">{{ r.rehearsal_date.strftime('%b') }}</span>
+    </a>
+    <div class="rehearsal-main">
+      <p class="rehearsal-status">
+        <span class="state-badge state-{{ r.state }}">{{ state_labels[r.state] }}</span>
+        {% if r.is_today %}<span class="tag">Today</span>{% elif next_rehearsal and r.id == next_rehearsal.id %}<span class="tag">Next</span>{% endif %}
+        <span class="muted">{{ r.state_text }}</span>
+      </p>
+      {% if not r.is_cancelled %}{% include "rehearsals/_people.html" %}{% endif %}
+      {% if r.setlist_name or r.song_count %}
+      <p class="rehearsal-plan">Plan:
+        {% if r.setlist_name %}<a href="{{ url_for('setlists.detail', setlist_id=r.setlist_id) }}">{{ r.setlist_name }}</a>{% endif %}
+        {% if r.song_count %}{{ ' + ' if r.setlist_name }}{{ r.song_count }} song{{ '' if r.song_count == 1 else 's' }}{% endif %}
+      </p>
+      {% endif %}
+      <a class="small" href="{{ url_for('rehearsals.detail', rehearsal_id=r.id) }}">Details and plan</a>
+    </div>
+    <div class="rehearsal-me">{% include "rehearsals/_answer.html" %}</div>
+  </li>
+  {% else %}
+  <li class="muted">No rehearsals to show.</li>
+  {% endfor %}
+</ol>
+
+<section class="extra-rehearsal" aria-labelledby="extra-h">
+  <h2 id="extra-h">Extra rehearsal</h2>
+  <p class="hint">Mondays are added by themselves. Add another day here, for example before a gig.</p>
+  <form method="post" action="{{ url_for('rehearsals.new') }}" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="sr-only" for="extra-date">Date of the extra rehearsal</label>
+    <input id="extra-date" name="rehearsal_date" type="date" min="{{ today.isoformat() }}" required>
+    <button class="btn" type="submit">Add</button>
+  </form>
+</section>
+{% endblock %}

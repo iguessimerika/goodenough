@@ -1,0 +1,16 @@
+{# My yes/no buttons for one rehearsal. Needs r, back. #}
+{% if r.can_answer %}
+<form method="post" action="{{ url_for('rehearsals.respond', rehearsal_id=r.id) }}" class="answer">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="back" value="{{ back }}">
+  {% if show_past %}<input type="hidden" name="past" value="1">{% endif %}
+  <button class="btn small answer-yes" type="submit" name="status" value="yes" aria-pressed="{{ 'true' if r.mine == 'yes' else 'false' }}">I'm in</button>
+  <button class="btn small answer-no" type="submit" name="status" value="no" aria-pressed="{{ 'true' if r.mine == 'no' else 'false' }}"
+    {% if r.deadline_passed and r.mine != 'no' %}onclick="return confirm('The deadline was Saturday. If you cancel now, you bring food next time. Cancel anyway?')"{% endif %}>Can't make it</button>
+</form>
+<p class="deadline{% if r.deadline_passed %} is-passed{% endif %}">
+  {% if r.deadline_passed %}Cancelling now means bringing food{% else %}Cancel by {{ r.deadline.strftime('%a, %d %b') }}{% endif %}
+</p>
+{% elif r.is_past %}
+<p class="deadline">{{ 'You were in' if r.mine == 'yes' else ('You were out' if r.mine == 'no' else 'No answer from you') }}</p>
+{% endif %}
