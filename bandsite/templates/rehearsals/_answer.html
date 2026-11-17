@@ -9,7 +9,7 @@
     {% if r.deadline_passed and r.mine != 'no' %}onclick="return confirm('The deadline was Saturday. If you cancel now, you bring food next time. Cancel anyway?')"{% endif %}>Can't make it</button>
 </form>
 <p class="deadline{% if r.deadline_passed %} is-passed{% endif %}">
-  {% if r.deadline_passed %}Cancelling now means bringing food{% else %}Cancel by {{ r.deadline.strftime('%a, %d %b') }}{% endif %}
+  {% if r.deadline_passed %}Cancelling now means bringing food{% elif r.short_notice %}Added at short notice, cancelling is free{% else %}Cancel by {{ r.deadline.strftime('%a, %d %b') }}{% endif %}
 </p>
 {% elif r.is_past %}
 <p class="deadline">{{ 'You were in' if r.mine == 'yes' else ('You were out' if r.mine == 'no' else 'No answer from you') }}</p>

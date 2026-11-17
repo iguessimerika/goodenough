@@ -7,7 +7,7 @@ Made for Railway.
 **Status:** the *Song* area is done (create, edit, delete, search, filter, YouTube, sheet-music PDFs with shared notes).
 *Band member* (list) and *Keywords* (manage Phase and Mood) are kept simple.
 *Setlist* is done, including the sheet music of a set opened in running order.
-*Rehearsal* is done: Mondays planned automatically, yes/no answers, food duty for late cancellations.
+*Rehearsal* is done: rehearsal day from Settings planned automatically, yes/no answers, food duty for late cancellations.
 *Questionnaire* shows a placeholder.
 
 ## Deploy on Railway
@@ -63,7 +63,9 @@ appear, so the order on screen always matches the setlist.
 
 ## Rehearsals
 
-- Every Monday for the next three months is created automatically when someone opens *Rehearsal*.
+- The rehearsal day and start time are set under *Settings* (default: Monday, 17:30). Rehearsals on that
+  day for the next three months are created automatically when someone opens *Rehearsal*.
+  Changing the day removes upcoming rehearsals on the old day unless they already have answers or a plan.
   A single Monday can be cancelled (e.g. a public holiday); extra days can be added.
 - Every member answers **I'm in** or **Can't make it**. Cancelling is free until the end of the
   Saturday before (German time). Cancelling later means bringing food to the next rehearsal; this

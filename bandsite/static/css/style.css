@@ -57,7 +57,7 @@ a:hover { color: var(--tape-dark); }
 /* Forms */
 label { display: block; font-weight: 600; margin-bottom: .3rem; }
 input[type=text], input[type=email], input[type=password], input[type=url], input[type=search],
-input[type=number], select, textarea {
+input[type=number], input[type=time], input[type=date], select, textarea {
   width: 100%; font: inherit; color: inherit;
   padding: .65rem .75rem; min-height: 2.75rem;
   background: #f7f8f5; border: 2px solid var(--ink); border-radius: var(--radius);
@@ -101,6 +101,7 @@ legend { font-weight: 600; padding: 0; margin-bottom: .4rem; }
 .account { display: flex; align-items: center; gap: 1rem; font-size: .9rem; }
 .account form { margin: 0; }
 .account .linkbutton:hover { color: var(--tape); }
+.account a[aria-current=page] { color: var(--tape); font-weight: 700; }
 
 .content { max-width: 1100px; margin: 0 auto; padding: clamp(1.25rem, 4vw, 2.5rem) clamp(1rem, 4vw, 2.5rem) 4rem; }
 .page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
@@ -341,3 +342,10 @@ body.editor-page { background: #8d9188; }
 .food-callout li { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .75rem; }
 .food-callout form { margin: 0; }
 .tag.food { background: var(--tape); border-color: var(--ink); color: var(--ink); font-weight: 700; }
+
+/* Settings */
+.settings-form { max-width: 36rem; }
+.settings-form fieldset { border: 0; border-top: 3px solid var(--ink); margin: 0 0 1.25rem; padding: .9rem 0 0; }
+.settings-form legend { font-weight: 800; font-size: 1.3rem; padding: 0 .5rem 0 0; }
+.settings-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 0 1rem; }
+.rehearsal-date .time { font-size: .75rem; font-weight: 700; margin-top: .15rem; }

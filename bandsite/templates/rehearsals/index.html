@@ -5,7 +5,7 @@
 <div class="page-head">
   <div>
     <h1>Rehearsals</h1>
-    <p class="muted" style="margin:.4rem 0 0">Every Monday, planned three months ahead. Cancel by the Saturday before, or you bring food.</p>
+    <p class="muted" style="margin:.4rem 0 0">Every {{ weekday_name }} at {{ start_time }}, planned three months ahead. Cancel by the Saturday before, or you bring food. <a href="{{ url_for('settings.index') }}">Change day or time</a></p>
   </div>
 </div>
 
@@ -49,6 +49,7 @@
       <span class="wd">{{ r.rehearsal_date.strftime('%a') }}</span>
       <span class="day">{{ r.rehearsal_date.strftime('%d') }}</span>
       <span class="mon">{{ r.rehearsal_date.strftime('%b') }}</span>
+      <span class="time">{{ start_time }}</span>
     </a>
     <div class="rehearsal-main">
       <p class="rehearsal-status">
@@ -74,7 +75,7 @@
 
 <section class="extra-rehearsal" aria-labelledby="extra-h">
   <h2 id="extra-h">Extra rehearsal</h2>
-  <p class="hint">Mondays are added by themselves. Add another day here, for example before a gig.</p>
+  <p class="hint">Every {{ weekday_name }} is added by itself. Add another day here, for example before a gig.</p>
   <form method="post" action="{{ url_for('rehearsals.new') }}" class="inline-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label class="sr-only" for="extra-date">Date of the extra rehearsal</label>

@@ -1,0 +1,29 @@
+{% extends "app_base.html" %}
+{% block title %}Settings · {{ band.name }}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Settings</h1></div>
+
+<form method="post" class="settings-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <fieldset>
+    <legend>Rehearsals</legend>
+    <div class="settings-row">
+      <div class="field">
+        <label for="rehearsal_weekday">Rehearsal day</label>
+        <select id="rehearsal_weekday" name="rehearsal_weekday">
+          {% for day in weekdays %}<option value="{{ loop.index0 }}"{% if s.rehearsal_weekday == loop.index0|string %} selected{% endif %}>{{ day }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="rehearsal_time">Start time</label>
+        <input id="rehearsal_time" name="rehearsal_time" type="time" step="300" value="{{ s.rehearsal_time }}" required>
+      </div>
+    </div>
+    <p class="hint">Rehearsals for the next three months are created on this day. If you change the day, upcoming
+      rehearsals on the old day are removed unless someone has already answered or planned something for them.
+      Cancelling is free until the end of the Saturday before a rehearsal.</p>
+  </fieldset>
+  <button class="btn primary" type="submit">Save settings</button>
+</form>
+<p class="hint" style="margin-top:1.5rem">Settings apply to the whole band. Every member can change them.</p>
+{% endblock %}

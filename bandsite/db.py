@@ -265,6 +265,13 @@ SCHEMA = [
         CONSTRAINT fk_food_rehearsal FOREIGN KEY (rehearsal_id) REFERENCES rehearsals (id) ON DELETE SET NULL,
         CONSTRAINT fk_food_settler FOREIGN KEY (settled_by) REFERENCES members (id) ON DELETE SET NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    """CREATE TABLE IF NOT EXISTS settings (
+        name VARCHAR(60) PRIMARY KEY,
+        value VARCHAR(255) NOT NULL,
+        updated_by INT NULL,
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_setting_member FOREIGN KEY (updated_by) REFERENCES members (id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
 ]
 
 
@@ -843,7 +850,7 @@ def list_rehearsals(from_date=None):
     where, params = ("WHERE r.rehearsal_date >= %s", (from_date,)) if from_date else ("", ())
     rehearsals = fetch_all(
         f"""SELECT r.id, r.rehearsal_date, r.is_cancelled, r.cancel_reason, r.setlist_id, r.notes,
-                   l.name AS setlist_name,
+                   r.created_at, l.name AS setlist_name,
                    (SELECT COUNT(*) FROM rehearsal_songs rs WHERE rs.rehearsal_id = r.id) AS song_count
             FROM rehearsals r LEFT JOIN setlists l ON l.id = r.setlist_id
             {where}
@@ -863,7 +870,7 @@ def count_past_rehearsals(before_date):
 def get_rehearsal(rehearsal_id):
     rehearsal = fetch_one(
         """SELECT r.id, r.rehearsal_date, r.is_cancelled, r.cancel_reason, r.setlist_id, r.notes,
-                  l.name AS setlist_name
+                  r.created_at, l.name AS setlist_name
            FROM rehearsals r LEFT JOIN setlists l ON l.id = r.setlist_id
            WHERE r.id = %s""",
         (rehearsal_id,),
@@ -1026,6 +1033,51 @@ def settle_food_duty(duty_id, settled_by):
         "UPDATE food_duties SET settled_at = CURRENT_TIMESTAMP, settled_by = %s WHERE id = %s AND settled_at IS NULL",
         (settled_by, duty_id),
     )
+
+
+# --------------------------------------------------------------------- settings
+
+# Band-wide settings and their defaults. Values are stored as text.
+SETTING_DEFAULTS = {
+    "rehearsal_weekday": "0",    # 0 = Monday … 6 = Sunday (like Python's date.weekday())
+    "rehearsal_time": "17:30",
+}
+
+
+def get_settings():
+    """All settings, with the defaults filled in for anything not saved yet."""
+    values = dict(SETTING_DEFAULTS)
+    for r in fetch_all("SELECT name, value FROM settings"):
+        values[r["name"]] = r["value"]
+    return values
+
+
+def save_settings(values, member_id):
+    with transaction() as cursor:
+        for name, value in values.items():
+            cursor.execute(
+                """INSERT INTO settings (name, value, updated_by) VALUES (%s, %s, %s)
+                   ON DUPLICATE KEY UPDATE value = %s, updated_by = %s""",
+                (name, value, member_id, value, member_id),
+            )
+
+
+def remove_unused_rehearsals(from_date, weekday):
+    """After the rehearsal day changed: deletes upcoming rehearsals on the old weekday that nobody
+    has used yet (no answers, no plan, not cancelled). Returns the dates of the ones that were kept."""
+    rows = fetch_all(
+        """SELECT r.id, r.rehearsal_date,
+                  r.is_cancelled OR r.setlist_id IS NOT NULL OR COALESCE(r.notes, '') <> ''
+                  OR EXISTS (SELECT 1 FROM rehearsal_responses x WHERE x.rehearsal_id = r.id)
+                  OR EXISTS (SELECT 1 FROM rehearsal_songs x WHERE x.rehearsal_id = r.id) AS in_use
+           FROM rehearsals r WHERE r.rehearsal_date >= %s ORDER BY r.rehearsal_date""",
+        (from_date,),
+    )
+    on_old_day = [r for r in rows if r["rehearsal_date"].weekday() == weekday]
+    unused = [r["id"] for r in on_old_day if not r["in_use"]]
+    if unused:
+        execute(f"DELETE FROM rehearsals WHERE id IN ({_in_clause(unused)})", tuple(unused))
+    return [r["rehearsal_date"] for r in on_old_day if r["in_use"]]
 
 
 if __name__ == "__main__":

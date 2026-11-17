@@ -17,6 +17,7 @@
   </nav>
   <div class="account">
     <span>{{ current_user.name }}</span>
+    <a href="{{ url_for('settings.index') }}"{% if request.endpoint and request.endpoint.startswith('settings.') %} aria-current="page"{% endif %}>Settings</a>
     <form method="post" action="{{ url_for('auth.logout') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="linkbutton" type="submit">Sign out</button>
