@@ -23,6 +23,19 @@
     </form>
   </div>
 </header>
+{% set pinned = pinned_setlists() %}
+{% if pinned %}
+<nav class="pinbar" aria-label="Pinned setlists">
+  {% for p in pinned %}
+  <div class="pinbar-item">
+    <span class="pinbar-label">Pinned</span>
+    <a class="pinbar-name" href="{{ url_for('setlists.detail', setlist_id=p.id) }}">{{ p.name }}</a>
+    {% if p.event_date %}<span class="pinbar-date">{{ p.event_date.strftime('%a, %d %b') }}</span>{% endif %}
+    {% if p.has_sheets %}<a class="btn small primary" href="{{ url_for('setlists.sheets', setlist_id=p.id) }}">Open sheet music</a>{% endif %}
+  </div>
+  {% endfor %}
+</nav>
+{% endif %}
 <main class="content">
   {% include "_flashes.html" %}
   {% block content %}{% endblock %}

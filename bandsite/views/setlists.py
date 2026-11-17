@@ -119,6 +119,20 @@ def delete(setlist_id):
     return redirect(url_for("setlists.index"))
 
 
+@bp.post("/setlists/<int:setlist_id>/pin")
+def pin(setlist_id):
+    setlist = db.get_setlist(setlist_id) or abort(404)
+    if request.form.get("action") == "unpin":
+        db.unpin_setlist(setlist_id)
+        flash(f"“{setlist['name']}” is no longer pinned.", "ok")
+    else:
+        db.pin_setlist(setlist_id, current_user.id)
+        flash(f"“{setlist['name']}” is pinned for the whole band.", "ok")
+    if request.form.get("back") == "index":
+        return redirect(url_for("setlists.index"))
+    return _to_set_anchor(setlist_id)
+
+
 # ---------------------------------------------------------------- sets
 
 @bp.post("/setlists/<int:setlist_id>/sets")

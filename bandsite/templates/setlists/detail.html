@@ -5,13 +5,21 @@
   <div>
     <p class="small"><a href="{{ url_for('setlists.index') }}">All setlists</a></p>
     <h1>{{ setlist.name }}</h1>
-    <p class="muted" style="margin:.4rem 0 0">{{ setlist.event_date.strftime('%A, %d %B %Y') if setlist.event_date else 'No date yet' }}</p>
+    <p class="muted" style="margin:.4rem 0 0">{{ setlist.event_date.strftime('%A, %d %B %Y') if setlist.event_date else 'No date yet' }}{% if setlist.pinned_at %} · <span class="pin-badge">Pinned</span>{% if setlist.pinned_by_name %} by {{ setlist.pinned_by_name }}{% endif %}{% endif %}</p>
   </div>
   <div class="head-actions">
     {% if setlist.document_count %}
     <a class="btn primary" href="{{ url_for('setlists.sheets', setlist_id=setlist.id) }}">Open all sheet music</a>
     <a class="btn" href="{{ url_for('setlists.sheets_pdf', setlist_id=setlist.id) }}" title="All sets in one file, for offline use. Your notes aren't included.">Download as one PDF</a>
     {% endif %}
+    <form method="post" action="{{ url_for('setlists.pin', setlist_id=setlist.id) }}" style="display:inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% if setlist.pinned_at %}
+      <button class="btn" type="submit" name="action" value="unpin">Unpin</button>
+      {% else %}
+      <button class="btn" type="submit" name="action" value="pin" title="Shows this setlist under the menu for every band member">Pin for everyone</button>
+      {% endif %}
+    </form>
     <a class="btn" href="{{ url_for('setlists.edit', setlist_id=setlist.id) }}">Edit</a>
     <form method="post" action="{{ url_for('setlists.delete', setlist_id=setlist.id) }}" style="display:inline" onsubmit="return confirm('Permanently delete “{{ setlist.name }}” with all its sets?')">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
