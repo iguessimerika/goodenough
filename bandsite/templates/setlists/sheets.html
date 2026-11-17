@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ current_set.name ~ ' · ' if current_set }}{{ setlist.name }} · Sheet music{% endblock %}
+{% block body_class %}editor-page viewer-page{% endblock %}
+{% block body %}
+<div id="viewer">
+  <header class="ed-bar vw-bar" id="vw-bar">
+    <a class="btn small" href="{{ url_for('setlists.detail', setlist_id=setlist.id) }}{{ '#set-' ~ current_set.id if current_set }}">Back</a>
+    <span class="vw-title">{{ setlist.name }}<span> · {{ current_set.name if current_set else 'All sets' }}</span></span>
+
+    <div class="ed-group" role="group" aria-label="Songs">
+      <button type="button" class="btn small" id="vw-prev" aria-label="Previous song">◀</button>
+      <label class="sr-only" for="vw-jump">Jump to song</label>
+      <select id="vw-jump" class="vw-jump">
+        {% for st in plan %}
+        <optgroup label="{{ st.name }}">
+          {% for song in st.songs %}<option value="song-{{ st.id }}-{{ song.number }}">{{ song.number }}. {{ song.title }}</option>{% endfor %}
+        </optgroup>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn small" id="vw-next" aria-label="Next song">▶</button>
+    </div>
+
+    <div class="ed-group" role="group" aria-label="View">
+      <button type="button" class="btn small" id="vw-fit" aria-pressed="false" title="Show one whole page at a time">Whole page</button>
+      <button type="button" class="btn small" id="vw-zoom-out" aria-label="Zoom out">−</button>
+      <button type="button" class="btn small" id="vw-zoom-in" aria-label="Zoom in">+</button>
+      <button type="button" class="btn small" id="vw-fullscreen" hidden>Full screen</button>
+    </div>
+
+    {% if setlist.sets|length > 1 %}
+    <nav class="ed-group vw-sets" aria-label="Sets">
+      {% for st in setlist.sets %}
+      <a class="btn small"{% if current_set and current_set.id == st.id %} aria-current="page"{% endif %} href="{{ url_for('setlists.sheets', setlist_id=setlist.id, set_id=st.id) }}">{{ st.name }}</a>
+      {% endfor %}
+      <a class="btn small"{% if not current_set %} aria-current="page"{% endif %} href="{{ url_for('setlists.sheets', setlist_id=setlist.id) }}">All</a>
+    </nav>
+    {% endif %}
+  </header>
+
+  <div class="vw-pages" id="vw-pages">
+    {% if not document_count %}
+    <p class="ed-message">There is no sheet music in {{ 'this set' if current_set else 'this setlist' }} yet. Upload PDFs on the song pages.</p>
+    {% endif %}
+    {% for st in plan %}
+    {% if plan|length > 1 %}
+    <h2 class="vw-set">{{ st.name }}{% if st.mood %} <span>· {{ st.mood }}</span>{% endif %}</h2>
+    {% endif %}
+    {% for song in st.songs %}
+    <section class="vw-song" id="song-{{ st.id }}-{{ song.number }}" aria-labelledby="song-h-{{ st.id }}-{{ song.number }}">
+      <header class="vw-song-head">
+        <span class="num">{{ song.number }}</span>
+        <div>
+          <h3 id="song-h-{{ st.id }}-{{ song.number }}">{{ song.title }}</h3>
+          <p>{{ song.artist }}{% if song.capo %} · <strong>Capo {{ song.capo }}</strong>{% endif %}{% if song.singers %} · {{ song.singers|join(', ') }}{% endif %}</p>
+        </div>
+        {% if song.documents|length == 1 %}<a class="vw-annotate" href="{{ song.documents[0].editor }}">Annotate</a>{% endif %}
+      </header>
+      {% for d in song.documents %}
+      <div class="vw-doc" data-file="{{ d.file }}" data-doc="{{ d.id }}">
+        {% if song.documents|length > 1 %}
+        <p class="vw-doc-head"><span>{{ d.filename }}</span> <a href="{{ d.editor }}">Annotate</a></p>
+        {% endif %}
+        <p class="vw-loading">Loading …</p>
+      </div>
+      {% else %}
+      <p class="vw-missing">No sheet music for this song. <a href="{{ song.url }}">Upload a PDF</a></p>
+      {% endfor %}
+    </section>
+    {% endfor %}
+    {% endfor %}
+    <p class="vw-end">End of {{ current_set.name if current_set else setlist.name }}</p>
+  </div>
+</div>
+<script type="application/json" id="vw-annotations">{{ annotations_by_doc|tojson }}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="{{ url_for('static', filename='js/setlist-viewer.js') }}"></script>
+{% endblock %}

@@ -4,3 +4,4 @@ Flask-WTF>=1.2,<2
 mysql-connector-python>=9.0
 gunicorn>=22
 python-dotenv>=1.0
+pypdf>=4.0

@@ -241,3 +241,36 @@ body.editor-page { background: #8d9188; }
 .add-set { margin-top: 3rem; padding-top: .9rem; border-top: 3px solid var(--ink); }
 .add-set h2 { margin-bottom: .9rem; }
 .add-set-form { max-width: 24rem; }
+.set-tools { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; }
+.head-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.head-actions form { margin: 0; }
+.tag.warn { border-color: var(--danger); color: var(--danger); background: transparent; }
+
+/* Setlist sheet-music view */
+.vw-bar { gap: .5rem .75rem; }
+.vw-title { font-weight: 800; font-stretch: 75%; font-size: 1.2rem; max-width: 22rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vw-title span { font-weight: 600; color: var(--tape); }
+.vw-jump { width: auto; max-width: 16rem; min-height: 2.25rem; padding: .3rem .5rem; font-size: .9rem; background: var(--surface); color: var(--ink); border-color: var(--surface); }
+.vw-sets { margin-left: auto; }
+.vw-sets .btn[aria-current=page] { background: var(--surface); color: var(--ink); }
+.vw-pages { max-width: none; margin: 0 auto; padding: 1rem 12px 6rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+.vw-pages .page { cursor: pointer; scroll-margin-top: var(--vw-bar, 3.5rem); }
+.vw-set { color: #fff; font-size: 2.2rem; margin-top: 1.5rem; align-self: stretch; text-align: center; }
+.vw-set span { font-weight: 600; font-stretch: 100%; font-size: 1.1rem; }
+.vw-song { display: flex; flex-direction: column; align-items: center; gap: 1rem; width: 100%; scroll-margin-top: var(--vw-bar, 3.5rem); }
+.vw-song-head { display: flex; gap: .9rem; align-items: center; background: var(--ink); color: var(--surface); padding: .55rem 1.1rem .55rem .7rem; border-left: 8px solid var(--tape); align-self: center; max-width: 100%; }
+.vw-song-head .num { font-stretch: 62%; font-weight: 900; font-size: 2.4rem; line-height: 1; color: var(--tape); min-width: 1.4ch; text-align: center; }
+.vw-song-head h3 { font-size: 1.6rem; }
+.vw-song-head p { margin: .15rem 0 0; font-size: .95rem; }
+.vw-song-head strong { color: var(--tape); }
+.vw-song-head .vw-annotate { margin-left: .75rem; font-size: .85rem; align-self: flex-end; }
+.vw-doc { display: flex; flex-direction: column; align-items: center; gap: 1rem; width: 100%; }
+.vw-doc-head { margin: 0; display: flex; gap: 1rem; color: #fff; font-size: .9rem; }
+.vw-doc-head a { color: #fff; }
+.vw-loading, .vw-missing, .vw-end { color: #fff; margin: 0; }
+.vw-missing { background: rgba(24,35,58,.55); padding: 1rem 1.5rem; border: 2px dashed #fff; }
+.vw-missing a { color: #fff; }
+.vw-error { color: #ffd0d8; font-weight: 600; }
+.vw-end { margin-top: 2rem; font-weight: 700; opacity: .8; }
+@media (max-width: 700px) { .vw-title { display: none; } .vw-sets { margin-left: 0; } }
+

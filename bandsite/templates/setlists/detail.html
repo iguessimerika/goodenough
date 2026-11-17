@@ -7,7 +7,11 @@
     <h1>{{ setlist.name }}</h1>
     <p class="muted" style="margin:.4rem 0 0">{{ setlist.event_date.strftime('%A, %d %B %Y') if setlist.event_date else 'No date yet' }}</p>
   </div>
-  <div>
+  <div class="head-actions">
+    {% if setlist.document_count %}
+    <a class="btn primary" href="{{ url_for('setlists.sheets', setlist_id=setlist.id) }}">Open all sheet music</a>
+    <a class="btn" href="{{ url_for('setlists.sheets_pdf', setlist_id=setlist.id) }}" title="All sets in one file, for offline use. Your notes aren't included.">Download as one PDF</a>
+    {% endif %}
     <a class="btn" href="{{ url_for('setlists.edit', setlist_id=setlist.id) }}">Edit</a>
     <form method="post" action="{{ url_for('setlists.delete', setlist_id=setlist.id) }}" style="display:inline" onsubmit="return confirm('Permanently delete “{{ setlist.name }}” with all its sets?')">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -25,6 +29,10 @@
     {% if one_set.mood %}<span class="tag phase">{{ one_set.mood }}</span>{% endif %}
     <span class="muted">{{ one_set.songs|length }} song{{ '' if one_set.songs|length == 1 else 's' }}</span>
     <span class="set-tools">
+      {% if one_set.document_count %}
+      <a class="btn small primary" href="{{ url_for('setlists.sheets', setlist_id=setlist.id, set_id=one_set.id) }}">Open sheet music</a>
+      <a class="btn small" href="{{ url_for('setlists.sheets_pdf', setlist_id=setlist.id, set_id=one_set.id) }}" title="All PDFs of this set as one file, for offline use. Your notes aren't included.">Download as one PDF</a>
+      {% endif %}
       <form method="post" action="{{ url_for('setlists.move_set', set_id=one_set.id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn small" type="submit" name="direction" value="up" aria-label="Move {{ one_set.name }} up"{% if loop.first %} disabled{% endif %}>↑</button>
@@ -41,6 +49,7 @@
         <a href="{{ url_for('songs.detail', song_id=entry.song_id) }}">{{ entry.title }}</a>
         <span class="muted">{{ entry.artist }}</span>
         {% if entry.capo %}<span class="tag">Capo {{ entry.capo }}</span>{% endif %}
+        {% if not entry.documents %}<span class="tag warn">No sheet music</span>{% elif entry.documents|length > 1 %}<span class="tag">{{ entry.documents|length }} PDFs</span>{% endif %}
       </div>
       <form method="post" class="set-song-tools" action="{{ url_for('setlists.move_song', set_song_id=entry.id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

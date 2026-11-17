@@ -6,7 +6,8 @@ Made for Railway.
 
 **Status:** the *Song* area is done (create, edit, delete, search, filter, YouTube, sheet-music PDFs with shared notes).
 *Band member* (list) and *Keywords* (manage Phase and Mood) are kept simple.
-*Setlist*, *Rehearsal* and *Questionnaire* show a placeholder.
+*Setlist* is done, including the sheet music of a set opened in running order.
+*Rehearsal* and *Questionnaire* show a placeholder.
 
 ## Deploy on Railway
 
@@ -44,6 +45,20 @@ Check the connection any time with `python -m bandsite.db`.
 - Look: `bandsite/static/css/style.css`
 - All SQL: `bandsite/db.py`
 - Default Phase/Mood values: `DEFAULT_KEYWORDS` in `bandsite/db.py` (or the Keywords tab)
+
+## Sheet music for a gig
+
+On a setlist, **Open sheet music** (per set) or **Open all sheet music** shows every PDF of the songs
+one after another, in the running order, with the band's notes on top. Songs without a PDF still
+appear, so the order on screen always matches the setlist.
+
+- Next / previous page: `→` / `←`, `Page Down` / `Page Up`, `Space`, or tap the right / left third of a page.
+  Bluetooth page-turn pedals usually send exactly these keys.
+- Next / previous song: the ◀ ▶ buttons, the song list in the bar, or `N` / `P`.
+- **Whole page** fits one page on the screen; the choice is remembered on that device.
+- **Full screen** hides the browser bars. The screen stays on while the view is open (where the browser supports it).
+- **Download as one PDF** merges all PDFs of a set into one file with a bookmark per song, for apps
+  like forScore or for when there's no internet at the venue. The band's notes are not part of that file.
 
 ## Good to know
 
