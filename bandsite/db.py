@@ -663,5 +663,75 @@ def move_set_song(set_song_id, direction):
     return _move("set_songs", "set_id", set_song_id, direction)
 
 
+# --------------------------------------------------------------------- sheet music for setlists
+
+def _in_clause(ids):
+    return ", ".join(["%s"] * len(ids))
+
+
+def list_documents_for_songs(song_ids):
+    """{song_id: [documents in upload order]} for several songs at once."""
+    song_ids = sorted(set(song_ids))
+    if not song_ids:
+        return {}
+    result = {}
+    for d in fetch_all(
+        f"""SELECT id, song_id, filename FROM documents
+            WHERE song_id IN ({_in_clause(song_ids)}) ORDER BY created_at, id""",
+        tuple(song_ids),
+    ):
+        result.setdefault(d["song_id"], []).append(d)
+    return result
+
+
+def list_singers_for_songs(song_ids):
+    """{song_id: [singer names]} for several songs at once."""
+    song_ids = sorted(set(song_ids))
+    if not song_ids:
+        return {}
+    result = {}
+    for r in fetch_all(
+        f"""SELECT ss.song_id, mb.name FROM song_singers ss JOIN members mb ON mb.id = ss.member_id
+            WHERE ss.song_id IN ({_in_clause(song_ids)}) ORDER BY mb.name""",
+        tuple(song_ids),
+    ):
+        result.setdefault(r["song_id"], []).append(r["name"])
+    return result
+
+
+def get_annotations_for(document_ids):
+    """{document_id: annotations json string or None} for several PDFs at once."""
+    document_ids = sorted(set(document_ids))
+    if not document_ids:
+        return {}
+    result = {}
+    for r in fetch_all(
+        f"SELECT id, annotations FROM documents WHERE id IN ({_in_clause(document_ids)})",
+        tuple(document_ids),
+    ):
+        value = r["annotations"]
+        if isinstance(value, (bytes, bytearray)):
+            value = value.decode("utf-8")
+        result[r["id"]] = value
+    return result
+
+
+def get_setlist_with_sheets(setlist_id):
+    """Like get_setlist, but every song also has 'documents' (its PDFs) and 'singers'."""
+    setlist = get_setlist(setlist_id)
+    if setlist is None:
+        return None
+    song_ids = [entry["song_id"] for one_set in setlist["sets"] for entry in one_set["songs"]]
+    documents = list_documents_for_songs(song_ids)
+    singers = list_singers_for_songs(song_ids)
+    for one_set in setlist["sets"]:
+        for entry in one_set["songs"]:
+            entry["documents"] = documents.get(entry["song_id"], [])
+            entry["singers"] = singers.get(entry["song_id"], [])
+        one_set["document_count"] = sum(len(entry["documents"]) for entry in one_set["songs"])
+    setlist["document_count"] = sum(one_set["document_count"] for one_set in setlist["sets"])
+    return setlist
+
+
 if __name__ == "__main__":
     test_connection()

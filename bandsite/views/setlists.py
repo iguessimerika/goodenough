@@ -1,7 +1,10 @@
+import json
+import re
 from datetime import date
+from io import BytesIO
 
 import mysql.connector
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from .. import db
@@ -78,7 +81,7 @@ def new():
 
 @bp.get("/setlists/<int:setlist_id>")
 def detail(setlist_id):
-    setlist = db.get_setlist(setlist_id) or abort(404)
+    setlist = db.get_setlist_with_sheets(setlist_id) or abort(404)
     all_songs = db.list_song_choices()
     for one_set in setlist["sets"]:
         taken = {s["song_id"] for s in one_set["songs"]}
@@ -186,3 +189,129 @@ def move_song(set_song_id):
     entry = db.get_set_song(set_song_id) or abort(404)
     db.move_set_song(set_song_id, request.form.get("direction", ""))
     return _to_set_anchor(entry["setlist_id"], entry["set_id"])
+
+
+# ---------------------------------------------------------------- sheet music in running order
+
+def _sets_to_show(setlist, set_id):
+    """One set if set_id is given, otherwise all sets of the setlist."""
+    if set_id is None:
+        return setlist["sets"]
+    chosen = [one_set for one_set in setlist["sets"] if one_set["id"] == set_id]
+    return chosen or abort(404)
+
+
+def _parse_annotations(raw):
+    try:
+        data = json.loads(raw) if raw else None
+    except ValueError:
+        data = None
+    if not isinstance(data, dict) or not isinstance(data.get("pages"), dict):
+        return {"pages": {}}
+    return data
+
+
+@bp.get("/setlists/<int:setlist_id>/sheets")
+@bp.get("/setlists/<int:setlist_id>/sets/<int:set_id>/sheets")
+def sheets(setlist_id, set_id=None):
+    """All sheet-music PDFs of a set (or the whole setlist) one after another, with the band's notes."""
+    setlist = db.get_setlist_with_sheets(setlist_id) or abort(404)
+    sets = _sets_to_show(setlist, set_id)
+
+    document_ids = [d["id"] for one_set in sets for entry in one_set["songs"] for d in entry["documents"]]
+    annotations = db.get_annotations_for(document_ids)
+
+    # Songs without a PDF stay in the plan, so the order on screen always matches the setlist.
+    plan = []
+    for one_set in sets:
+        songs = []
+        for number, entry in enumerate(one_set["songs"], start=1):
+            songs.append({
+                "number": number,
+                "title": entry["title"],
+                "artist": entry["artist"],
+                "capo": entry["capo"],
+                "singers": entry["singers"],
+                "url": url_for("songs.detail", song_id=entry["song_id"]),
+                "documents": [
+                    {
+                        "id": d["id"],
+                        "filename": d["filename"],
+                        "file": url_for("songs.document_file", document_id=d["id"]),
+                        "editor": url_for("songs.document_editor", document_id=d["id"]),
+                    }
+                    for d in entry["documents"]
+                ],
+            })
+        plan.append({"id": one_set["id"], "name": one_set["name"], "mood": one_set["mood"], "songs": songs})
+
+    return render_template(
+        "setlists/sheets.html",
+        setlist=setlist,
+        current_set=sets[0] if set_id is not None else None,
+        plan=plan,
+        document_count=len(document_ids),
+        annotations_by_doc={str(i): _parse_annotations(annotations.get(i)) for i in document_ids},
+    )
+
+
+def _download_name(text):
+    name = re.sub(r"[^\w\- ]+", "", text).strip().replace(" ", "-")
+    return (name or "setlist")[:80] + ".pdf"
+
+
+@bp.get("/setlists/<int:setlist_id>/sheets.pdf")
+@bp.get("/setlists/<int:setlist_id>/sets/<int:set_id>/sheets.pdf")
+def sheets_pdf(setlist_id, set_id=None):
+    """All PDFs of a set (or the whole setlist) merged into one file, with a bookmark per song.
+
+    For apps like forScore or a venue without internet. The band's notes are not included.
+    """
+    from pypdf import PdfReader, PdfWriter
+
+    setlist = db.get_setlist_with_sheets(setlist_id) or abort(404)
+    sets = _sets_to_show(setlist, set_id)
+
+    writer = PdfWriter()
+    skipped = []
+    bookmarks = []  # (set name, [(song label, first page), …]); added once all pages exist
+    for one_set in sets:
+        song_marks = []
+        for number, entry in enumerate(one_set["songs"], start=1):
+            first_page = len(writer.pages)
+            for d in entry["documents"]:
+                file = db.get_document_file(d["id"])
+                if file is None:
+                    continue
+                try:
+                    reader = PdfReader(BytesIO(file["data"]))
+                    if reader.is_encrypted:
+                        reader.decrypt("")
+                    for page in reader.pages:
+                        writer.add_page(page)
+                except Exception:  # one broken or locked PDF must not break the whole download
+                    skipped.append(d["filename"])
+            if len(writer.pages) > first_page:
+                song_marks.append((f"{number}. {entry['title']}", first_page))
+        if song_marks:
+            bookmarks.append((one_set["name"], song_marks))
+
+    if len(writer.pages) == 0:
+        flash("There is no sheet music in this set yet.", "error")
+        return _to_set_anchor(setlist_id, set_id)
+
+    for set_name, song_marks in bookmarks:
+        parent = writer.add_outline_item(set_name, song_marks[0][1]) if len(sets) > 1 else None
+        for label, page in song_marks:
+            writer.add_outline_item(label, page, parent=parent)
+    if skipped:
+        flash("These PDFs couldn't be read and are missing from the download: " + ", ".join(skipped), "error")
+
+    output = BytesIO()
+    writer.write(output)
+    output.seek(0)
+    name = setlist["name"] + (f" {sets[0]['name']}" if set_id is not None else "")
+    response = send_file(output, mimetype="application/pdf", download_name=_download_name(name),
+                         as_attachment=True, max_age=0)
+    response.headers["Cache-Control"] = "private, no-cache"
+    return response
