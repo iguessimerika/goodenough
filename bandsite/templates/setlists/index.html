@@ -9,15 +9,24 @@
 {% if setlists %}
 <ul class="song-list">
   {% for l in setlists %}
-  <li class="song-row">
+  <li class="song-row{% if l.is_pinned %} is-pinned{% endif %}">
     <div>
-      <h2><a href="{{ url_for('setlists.detail', setlist_id=l.id) }}">{{ l.name }}</a></h2>
+      <h2><a href="{{ url_for('setlists.detail', setlist_id=l.id) }}">{{ l.name }}</a>{% if l.is_pinned %} <span class="pin-badge">Pinned</span>{% endif %}</h2>
       <p class="by">{{ l.event_date.strftime('%a, %d %b %Y') if l.event_date else 'No date yet' }}</p>
       <div class="tags">
         <span class="tag">{{ l.set_count }} set{{ '' if l.set_count == 1 else 's' }}</span>
         <span class="tag">{{ l.song_count }} song{{ '' if l.song_count == 1 else 's' }}</span>
       </div>
     </div>
+    <form method="post" action="{{ url_for('setlists.pin', setlist_id=l.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="back" value="index">
+      {% if l.is_pinned %}
+      <button class="btn small" type="submit" name="action" value="unpin" aria-label="Unpin {{ l.name }}">Unpin</button>
+      {% else %}
+      <button class="btn small" type="submit" name="action" value="pin" aria-label="Pin {{ l.name }} for everyone">Pin</button>
+      {% endif %}
+    </form>
   </li>
   {% endfor %}
 </ul>

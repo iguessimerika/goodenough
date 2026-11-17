@@ -54,6 +54,9 @@ def create_app():
     def inject_band():
         return {"band": BAND}
 
+    # Called from app_base.html, so only pages for signed-in members ask the database.
+    app.jinja_env.globals["pinned_setlists"] = db.list_pinned_setlists
+
     @app.after_request
     def security_headers(response):
         response.headers.setdefault("X-Content-Type-Options", "nosniff")

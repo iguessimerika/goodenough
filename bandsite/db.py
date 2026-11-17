@@ -218,6 +218,13 @@ SCHEMA = [
         CONSTRAINT fk_setsong_set FOREIGN KEY (set_id) REFERENCES setlist_sets (id) ON DELETE CASCADE,
         CONSTRAINT fk_setsong_song FOREIGN KEY (song_id) REFERENCES songs (id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
+    """CREATE TABLE IF NOT EXISTS pinned_setlists (
+        setlist_id INT PRIMARY KEY,
+        pinned_by INT NULL,
+        pinned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT fk_pin_setlist FOREIGN KEY (setlist_id) REFERENCES setlists (id) ON DELETE CASCADE,
+        CONSTRAINT fk_pin_member FOREIGN KEY (pinned_by) REFERENCES members (id) ON DELETE SET NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4""",
 ]
 
 
@@ -517,16 +524,24 @@ def list_setlists():
         """SELECT l.id, l.name, l.event_date, l.information,
                   (SELECT COUNT(*) FROM setlist_sets s WHERE s.setlist_id = l.id) AS set_count,
                   (SELECT COUNT(*) FROM set_songs ss JOIN setlist_sets s ON s.id = ss.set_id
-                    WHERE s.setlist_id = l.id) AS song_count
+                    WHERE s.setlist_id = l.id) AS song_count,
+                  p.pinned_at IS NOT NULL AS is_pinned
            FROM setlists l
-           ORDER BY l.event_date IS NULL, l.event_date ASC, l.name"""
+           LEFT JOIN pinned_setlists p ON p.setlist_id = l.id
+           ORDER BY p.pinned_at IS NULL, p.pinned_at DESC, l.event_date IS NULL, l.event_date ASC, l.name"""
     )
 
 
 def get_setlist(setlist_id):
     """A setlist with its 'sets' (ordered), each with a 'songs' list (ordered)."""
     setlist = fetch_one(
-        "SELECT id, name, event_date, information FROM setlists WHERE id = %s", (setlist_id,)
+        """SELECT l.id, l.name, l.event_date, l.information,
+                  p.pinned_at, m.name AS pinned_by_name
+           FROM setlists l
+           LEFT JOIN pinned_setlists p ON p.setlist_id = l.id
+           LEFT JOIN members m ON m.id = p.pinned_by
+           WHERE l.id = %s""",
+        (setlist_id,),
     )
     if setlist is None:
         return None
@@ -731,6 +746,34 @@ def get_setlist_with_sheets(setlist_id):
         one_set["document_count"] = sum(len(entry["documents"]) for entry in one_set["songs"])
     setlist["document_count"] = sum(one_set["document_count"] for one_set in setlist["sets"])
     return setlist
+
+
+# --------------------------------------------------------------------- pinned setlists (shared by the whole band)
+
+def pin_setlist(setlist_id, member_id):
+    """Pins a setlist for everyone. Pinning again keeps the original pin."""
+    return execute(
+        """INSERT INTO pinned_setlists (setlist_id, pinned_by) VALUES (%s, %s)
+           ON DUPLICATE KEY UPDATE setlist_id = setlist_id""",
+        (setlist_id, member_id),
+    )
+
+
+def unpin_setlist(setlist_id):
+    return execute("DELETE FROM pinned_setlists WHERE setlist_id = %s", (setlist_id,))
+
+
+def list_pinned_setlists():
+    """Pinned setlists for the bar under the menu, newest pin first, with whether they have sheet music."""
+    return fetch_all(
+        """SELECT l.id, l.name, l.event_date,
+                  EXISTS (SELECT 1 FROM documents d
+                          JOIN set_songs ss ON ss.song_id = d.song_id
+                          JOIN setlist_sets s ON s.id = ss.set_id
+                          WHERE s.setlist_id = l.id) AS has_sheets
+           FROM pinned_setlists p JOIN setlists l ON l.id = p.setlist_id
+           ORDER BY p.pinned_at DESC, l.id DESC"""
+    )
 
 
 if __name__ == "__main__":

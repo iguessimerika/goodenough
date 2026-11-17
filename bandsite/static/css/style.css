@@ -274,3 +274,14 @@ body.editor-page { background: #8d9188; }
 .vw-end { margin-top: 2rem; font-weight: 700; opacity: .8; }
 @media (max-width: 700px) { .vw-title { display: none; } .vw-sets { margin-left: 0; } }
 
+
+/* Pinned setlists */
+.pinbar { background: var(--tape); color: var(--ink); padding: .45rem clamp(1rem, 4vw, 2.5rem); display: grid; gap: .35rem; }
+.pinbar-item { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .75rem; }
+.pinbar-label { font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.pinbar-name { font-weight: 800; font-size: 1.05rem; color: var(--ink); }
+.pinbar-date { font-size: .9rem; }
+.pinbar .btn.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.pin-badge { display: inline-block; vertical-align: middle; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: .1rem .45rem; background: var(--tape); color: var(--ink); border-radius: 999px; }
+.song-row.is-pinned { border-left: 6px solid var(--tape); padding-left: .9rem; }
+.song-row form { margin: 0; }
