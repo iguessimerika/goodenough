@@ -6,7 +6,7 @@
 <section class="food-callout" id="food" aria-labelledby="food-h">
   <h2 id="food-h">Food duty</h2>
   {% if food %}
-  <p>Cancelled after Saturday, so these bring food to the next rehearsal:</p>
+  <p>Cancelled too late, so these bring food to the next rehearsal:</p>
   <ul>
     {% for f in food %}
     <li>
@@ -19,7 +19,7 @@
     {% endfor %}
   </ul>
   {% else %}
-  <p>Nobody owes food right now. Cancel rehearsals by the Saturday before, and it stays that way.</p>
+  <p>Nobody owes food right now. Cancel rehearsals at least two days ahead, and it stays that way.</p>
   {% endif %}
 </section>
 

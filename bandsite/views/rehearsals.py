@@ -1,10 +1,10 @@
-"""Rehearsals: every Monday, created automatically for the next three months.
+"""Rehearsals: on the band's rehearsal day (see Settings), created automatically for the next three months.
 
-Members say yes or no. Saying no after the Saturday before the rehearsal means bringing food
+Members say yes or no. Saying no later than two days before the rehearsal means bringing food
 next time (see the band member page). From the yes answers and the members' instruments the
 page shows whether the rehearsal is likely to happen.
 """
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
@@ -15,8 +15,8 @@ from .. import db
 bp = Blueprint("rehearsals", __name__)
 
 BAND_TIMEZONE = ZoneInfo("Europe/Berlin")
-REHEARSAL_WEEKDAY = 0      # Monday
 WEEKS_AHEAD = 13           # about three months
+CANCEL_DAYS_BEFORE = 2     # free cancelling until the end of this many days before
 
 # Instrument labels from the keyword "Instrument" that the outlook looks at (compared without case).
 SINGER = "gesang"
@@ -36,15 +36,37 @@ def today():
     return datetime.now(BAND_TIMEZONE).date()
 
 
-def upcoming_rehearsal_days(start, weeks=WEEKS_AHEAD):
-    first = start + timedelta(days=(REHEARSAL_WEEKDAY - start.weekday()) % 7)
+def rehearsal_settings():
+    """(weekday 0-6, start time 'HH:MM') from the band settings."""
+    values = db.get_settings()
+    return int(values["rehearsal_weekday"]), values["rehearsal_time"]
+
+
+def upcoming_rehearsal_days(start, weekday, weeks=WEEKS_AHEAD):
+    first = start + timedelta(days=(weekday - start.weekday()) % 7)
     return [first + timedelta(weeks=i) for i in range(weeks)]
 
 
 def deadline_for(rehearsal_date):
-    """The Saturday before the rehearsal; cancelling is free until the end of that day."""
-    days_back = (rehearsal_date.weekday() - 5) % 7 or 7
-    return rehearsal_date - timedelta(days=days_back)
+    """Two days before the rehearsal, whatever the weekday; cancelling is free until the end of that day."""
+    return rehearsal_date - timedelta(days=CANCEL_DAYS_BEFORE)
+
+
+def food_rule_applies(rehearsal):
+    """Late cancelling only costs food if the rehearsal already existed by its deadline.
+
+    Rehearsals added at short notice (an extra date, or right after changing the rehearsal day)
+    can be cancelled for free.
+    """
+    created = rehearsal.get("created_at")
+    if not isinstance(created, datetime):
+        return True
+    created_local = created.replace(tzinfo=timezone.utc).astimezone(BAND_TIMEZONE).date()  # MySQL stores UTC
+    return created_local <= deadline_for(rehearsal["rehearsal_date"])
+
+
+def is_late(rehearsal, now):
+    return now > deadline_for(rehearsal["rehearsal_date"]) and food_rule_applies(rehearsal)
 
 
 # ---------------------------------------------------------------- will it happen?
@@ -84,7 +106,8 @@ def _decorate(rehearsals, members, instruments, now):
         r["deadline"] = deadline_for(r["rehearsal_date"])
         r["is_past"] = r["rehearsal_date"] < now
         r["is_today"] = r["rehearsal_date"] == now
-        r["deadline_passed"] = now > r["deadline"]
+        r["deadline_passed"] = is_late(r, now)
+        r["short_notice"] = not food_rule_applies(r)
         r["mine"] = r["responses"].get(current_user.id)
         r["can_answer"] = not r["is_past"] and not r["is_cancelled"]
         for m in r["yes"] + r["no"]:
@@ -101,7 +124,8 @@ def _members():
 @bp.get("/rehearsal")
 def index():
     now = today()
-    db.ensure_rehearsals(upcoming_rehearsal_days(now))
+    weekday, start_time = rehearsal_settings()
+    db.ensure_rehearsals(upcoming_rehearsal_days(now, weekday))
     show_past = request.args.get("past") == "1"
     rehearsals = db.list_rehearsals(None if show_past else now)
     members = _members()
@@ -116,6 +140,8 @@ def index():
         past_count=db.count_past_rehearsals(now),
         food=db.list_open_food_duties(),
         today=now,
+        weekday_name=date(2024, 1, 1 + weekday).strftime("%A"),  # 1 Jan 2024 was a Monday
+        start_time=start_time,
     )
 
 
@@ -134,6 +160,7 @@ def detail(rehearsal_id):
         late=late,
         setlists=db.list_setlists(),
         songs=[s for s in db.list_song_choices() if s["id"] not in planned],
+        start_time=rehearsal_settings()[1],
         has_sheets=bool(rehearsal["setlist_id"])
         and (db.get_setlist_with_sheets(rehearsal["setlist_id"]) or {}).get("document_count", 0) > 0,
     )
@@ -160,10 +187,10 @@ def respond(rehearsal_id):
     elif rehearsal["is_cancelled"]:
         flash("This rehearsal is cancelled.", "error")
     else:
-        late = now > deadline_for(rehearsal["rehearsal_date"])
+        late = is_late(rehearsal, now)
         owes = db.set_response(rehearsal_id, current_user.id, status, late)
         if owes:
-            flash(f"Got it, you can't make it on {when}. That's after Saturday, so you're bringing food next time.", "error")
+            flash(f"Got it, you can't make it on {when}. That's past the deadline, so you're bringing food next time.", "error")
         elif status == "yes":
             flash(f"You're in for {when}.", "ok")
         else:

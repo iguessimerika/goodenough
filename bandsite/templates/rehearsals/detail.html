@@ -6,7 +6,7 @@
 <div class="page-head">
   <div>
     <p class="small"><a href="{{ url_for('rehearsals.index') }}#rehearsal-{{ r.id }}">All rehearsals</a></p>
-    <h1>{{ r.rehearsal_date.strftime('%A, %d %B') }}</h1>
+    <h1>{{ r.rehearsal_date.strftime('%A, %d %B') }} <small>{{ start_time }}</small></h1>
     <p class="rehearsal-status" style="margin-top:.5rem">
       <span class="state-badge state-{{ r.state }}">{{ state_labels[r.state] }}</span>
       <span class="muted">{{ r.state_text }}</span>
