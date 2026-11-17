@@ -1,6 +1,6 @@
 """Rehearsals: on the band's rehearsal day (see Settings), created automatically for the next three months.
 
-Members say yes or no. Saying no after the Saturday before the rehearsal means bringing food
+Members say yes or no. Saying no later than two days before the rehearsal means bringing food
 next time (see the band member page). From the yes answers and the members' instruments the
 page shows whether the rehearsal is likely to happen.
 """
@@ -16,6 +16,7 @@ bp = Blueprint("rehearsals", __name__)
 
 BAND_TIMEZONE = ZoneInfo("Europe/Berlin")
 WEEKS_AHEAD = 13           # about three months
+CANCEL_DAYS_BEFORE = 2     # free cancelling until the end of this many days before
 
 # Instrument labels from the keyword "Instrument" that the outlook looks at (compared without case).
 SINGER = "gesang"
@@ -47,9 +48,8 @@ def upcoming_rehearsal_days(start, weekday, weeks=WEEKS_AHEAD):
 
 
 def deadline_for(rehearsal_date):
-    """The Saturday before the rehearsal; cancelling is free until the end of that day."""
-    days_back = (rehearsal_date.weekday() - 5) % 7 or 7
-    return rehearsal_date - timedelta(days=days_back)
+    """Two days before the rehearsal, whatever the weekday; cancelling is free until the end of that day."""
+    return rehearsal_date - timedelta(days=CANCEL_DAYS_BEFORE)
 
 
 def food_rule_applies(rehearsal):
@@ -190,7 +190,7 @@ def respond(rehearsal_id):
         late = is_late(rehearsal, now)
         owes = db.set_response(rehearsal_id, current_user.id, status, late)
         if owes:
-            flash(f"Got it, you can't make it on {when}. That's after Saturday, so you're bringing food next time.", "error")
+            flash(f"Got it, you can't make it on {when}. That's past the deadline, so you're bringing food next time.", "error")
         elif status == "yes":
             flash(f"You're in for {when}.", "ok")
         else:

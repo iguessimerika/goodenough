@@ -68,7 +68,7 @@ appear, so the order on screen always matches the setlist.
   Changing the day removes upcoming rehearsals on the old day unless they already have answers or a plan.
   A single Monday can be cancelled (e.g. a public holiday); extra days can be added.
 - Every member answers **I'm in** or **Can't make it**. Cancelling is free until the end of the
-  Saturday before (German time). Cancelling later means bringing food to the next rehearsal; this
+  second day before the rehearsal (German time), whatever the rehearsal day; for Monday that's Saturday. Cancelling later means bringing food to the next rehearsal; this
   shows up under *Band member* and on the rehearsal page until someone presses **Brought it**.
   Saying "I'm in" again before the rehearsal drops the food duty; a cancelled rehearsal never costs food.
 - Will it happen? **Yes** when guitar (Gitarre), vocals (Gesang) and drums (Schlagzeug) are in,
