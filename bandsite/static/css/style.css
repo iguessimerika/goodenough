@@ -80,6 +80,40 @@ input[type=number], input[type=time], input[type=date], select, textarea {
   box-shadow: inset 0 2px 4px rgba(11,26,74,.12);
 }
 input:focus, select:focus, textarea:focus { border-color: var(--tape-dark); box-shadow: inset 0 2px 4px rgba(11,26,74,.12), 0 0 0 4px rgba(124,240,255,.55); outline: none; }
+
+/* Dropdowns: chrome pill with an aqua gel knob */
+select {
+  -webkit-appearance: none; appearance: none;
+  padding-right: 3rem; border-radius: 999px; cursor: pointer; font-weight: 600;
+  text-overflow: ellipsis;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.5 6 6l4.5-4.5' fill='none' stroke='%230b1a4a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") right 1.05rem center / .7rem no-repeat,
+    radial-gradient(circle closest-side, #ffffff 0 18%, #a6f6ff 46%, #4fd8f7 76%, var(--ink) 79% 93%, transparent 97%) right .35rem center / 2rem 2rem no-repeat,
+    linear-gradient(180deg, #ffffff 0%, #eef2fb 55%, #dfe6f6 100%);
+  box-shadow: inset 0 1px 0 #fff, 0 2px 0 var(--ink);
+  transition: box-shadow .15s ease, filter .15s ease;
+}
+select:hover { box-shadow: inset 0 1px 0 #fff, 0 2px 0 var(--ink), 0 0 14px rgba(124,240,255,.7); }
+select:focus { box-shadow: inset 0 1px 0 #fff, 0 2px 0 var(--ink), 0 0 0 4px rgba(124,240,255,.55); }
+select:disabled { opacity: .55; cursor: default; }
+input[type=search] { border-radius: 999px; padding-left: 1.1rem; }
+select option { background: var(--surface); color: var(--ink); font-weight: 500; }
+select option:checked { background: #a6f6ff; font-weight: 700; }
+select::-ms-expand { display: none; }
+
+/* Newer Chromium (customizable select): style the opened list as a Y2K panel too */
+@supports (appearance: base-select) {
+  select, ::picker(select) { appearance: base-select; }
+  select::picker-icon { display: none; }
+  ::picker(select) {
+    margin-top: .35rem; padding: .35rem; border: 2px solid var(--ink); border-radius: 16px;
+    background: var(--surface); box-shadow: 6px 6px 0 var(--tape-dark), 0 0 28px rgba(201,184,255,.65);
+  }
+  select option { padding: .5rem .8rem; border-radius: 999px; }
+  select option:hover, select option:focus-visible { background: var(--holo); outline: none; }
+  select option:checked { background: var(--gel); }
+  select option::checkmark { content: "\2726"; color: var(--tape-dark); margin-right: .35rem; }
+}
 textarea { min-height: 7rem; resize: vertical; }
 .field { margin-bottom: 1.25rem; }
 .hint { font-size: .875rem; color: var(--muted); margin: .3rem 0 0; }
@@ -304,7 +338,7 @@ body.editor-page { background: linear-gradient(180deg, #5b6a9c, #2a3a72); backgr
 .vw-bar { gap: .5rem .75rem; }
 .vw-title { font-weight: 800; font-stretch: 75%; font-size: 1.2rem; max-width: 22rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vw-title span { font-weight: 600; color: var(--tape); }
-.vw-jump { width: auto; max-width: 16rem; min-height: 2.25rem; padding: .3rem .5rem; font-size: .9rem; background: var(--surface); color: var(--ink); border-color: var(--surface); }
+.vw-jump { width: auto; max-width: 16rem; min-height: 2.25rem; padding: .3rem 2.6rem .3rem .9rem; font-size: .9rem; color: var(--ink); border-color: var(--surface); background-size: .6rem, 1.7rem 1.7rem, auto; background-position: right .9rem center, right .25rem center, 0 0; }
 .vw-sets { margin-left: auto; }
 .vw-sets .btn[aria-current=page] { background: var(--surface); color: var(--ink); }
 .vw-pages { max-width: none; margin: 0 auto; padding: 1rem 12px 6rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
