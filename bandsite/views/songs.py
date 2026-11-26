@@ -1,12 +1,14 @@
 import json
 import re
 from io import BytesIO
+from urllib.parse import quote
+from urllib.request import Request, urlopen
 
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
 from .. import db
-from ..utils import clean_annotations, youtube_id
+from ..utils import clean_annotations, split_video_title, youtube_id
 
 bp = Blueprint("songs", __name__)
 
@@ -118,6 +120,27 @@ def new():
             flash(f"“{values['title']}” is saved. You can upload sheet music now.", "ok")
             return redirect(url_for("songs.detail", song_id=song_id))
     return render_template("songs/form.html", song=None, v=values, **options)
+
+
+@bp.get("/songs/youtube-info")
+def youtube_info():
+    """Looks up title and artist for a YouTube link (used by the 'New song' pop-up)."""
+    url = request.args.get("url", "").strip()
+    video = youtube_id(url) if len(url) <= 500 else None
+    if not video:
+        return jsonify(valid=False, found=False)
+
+    oembed = "https://www.youtube.com/oembed?format=json&url=" + quote(f"https://www.youtube.com/watch?v={video}", safe="")
+    try:
+        with urlopen(Request(oembed, headers={"User-Agent": "goodEnough-bandsite"}), timeout=5) as response:
+            data = json.loads(response.read(200_000).decode("utf-8"))
+    except (OSError, ValueError):  # network errors, HTTP 401/404 (private/removed video), bad JSON
+        return jsonify(valid=True, found=False)
+
+    title, artist = split_video_title(data.get("title"), data.get("author_name"))
+    if not title:
+        return jsonify(valid=True, found=False)
+    return jsonify(valid=True, found=True, title=title, artist=artist)
 
 
 @bp.get("/songs/<int:song_id>")

@@ -177,6 +177,12 @@ legend { font-weight: 600; padding: 0; margin-bottom: .4rem; }
 dialog { border: 3px solid var(--ink); padding: 0; width: min(92vw, 880px); background: var(--surface); }
 dialog::backdrop { background: rgba(24,35,58,.7); }
 dialog .dialog-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .6rem .6rem .6rem 1rem; font-weight: 700; }
+dialog.prompt-dialog { width: min(92vw, 32rem); }
+dialog .dialog-body { padding: 1.25rem 1.25rem 1.5rem; }
+dialog .dialog-body h2 { margin: 0 0 .3rem; }
+dialog .dialog-body > .hint { margin: 0 0 1rem; }
+dialog .dialog-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+dialog .yt-error { color: var(--danger); }
 
 /* Keywords, members */
 .kw { margin-bottom: 2.5rem; }

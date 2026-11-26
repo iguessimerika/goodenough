@@ -35,6 +35,35 @@ def youtube_id(url):
     return video if video and _VIDEO_ID.match(video) else None
 
 
+_VIDEO_NOISE = re.compile(
+    r"\s*[\(\[][^\)\]]*\b(official|video|audio|lyrics?|visuali[sz]er|hd|hq|4k|remaster(ed)?|clip|mv)\b[^\)\]]*[\)\]]",
+    re.IGNORECASE,
+)
+_DASHES = re.compile(r"\s+[-–—]\s+")
+
+
+def _clean_channel(name):
+    name = re.sub(r"\s*-\s*Topic$", "", name or "", flags=re.IGNORECASE)
+    name = re.sub(r"(VEVO|\s+Official|\s+Music)$", "", name, flags=re.IGNORECASE)
+    return name.strip()
+
+
+def split_video_title(video_title, channel):
+    """Guesses (title, artist) from a YouTube video title and channel name.
+
+    "Oasis - Wonderwall (Official Video)" -> ("Wonderwall", "Oasis").
+    Without "Artist - Title" in the video title, the channel name is used as the artist.
+    """
+    text = _VIDEO_NOISE.sub("", video_title or "")
+    text = text.split(" | ")[0].strip().strip("\"'“”").strip()
+    parts = _DASHES.split(text, maxsplit=1)
+    if len(parts) == 2 and parts[0].strip() and parts[1].strip():
+        artist, title = parts[0].strip(), parts[1].strip().strip("\"'“”")
+    else:
+        artist, title = _clean_channel(channel), text
+    return title[:200], artist[:200]
+
+
 def is_safe_redirect(target):
     if not target or "\\" in target:
         return False
