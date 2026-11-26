@@ -64,4 +64,24 @@
   <button class="btn primary" type="submit">{{ 'Save changes' if song else 'Add song' }}</button>
   <a class="btn" href="{{ url_for('songs.detail', song_id=song.id) if song else url_for('songs.index') }}">Cancel</a>
 </form>
+
+{% if not song and not (v.title or v.artist or v.youtube_url) %}
+{# Only on a fresh "New song" page, not after a failed save #}
+<dialog id="yt-dialog" class="prompt-dialog" aria-labelledby="yt-dialog-title" data-lookup="{{ url_for('songs.youtube_info') }}">
+  <form id="yt-form" class="dialog-body" novalidate>
+    <h2 id="yt-dialog-title">Start with a YouTube link?</h2>
+    <p class="hint">Paste the link and title and artist are filled in for you.</p>
+    <div class="field">
+      <label for="yt-url">YouTube link</label>
+      <input id="yt-url" type="url" maxlength="500" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off">
+      <p class="hint yt-error" id="yt-error" role="alert" hidden></p>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn primary" type="submit" id="yt-submit">Continue</button>
+      <button class="btn" type="button" id="yt-skip">Skip</button>
+    </div>
+  </form>
+</dialog>
+<script src="{{ url_for('static', filename='js/youtube-prefill.js') }}"></script>
+{% endif %}
 {% endblock %}
