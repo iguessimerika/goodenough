@@ -243,6 +243,11 @@
     };
     canvas.addEventListener('pointerup', finish);
     canvas.addEventListener('pointercancel', finish);
+
+    // iPad/Android: a long press with the pen must not start a text selection or the copy menu.
+    const drawing = () => state.tool === 'pen' || state.tool === 'marker' || state.tool === 'eraser';
+    canvas.addEventListener('touchstart', (e) => { if (drawing()) e.preventDefault(); }, { passive: false });
+    canvas.addEventListener('contextmenu', (e) => { if (drawing()) e.preventDefault(); });
   }
 
   // ---------------------------------------------------------------- text notes
@@ -354,6 +359,12 @@
 
   window.addEventListener('beforeunload', (e) => {
     if (state.dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  // Only notes and form fields may be selected; everything else on this page is for drawing.
+  document.addEventListener('selectstart', (e) => {
+    const t = e.target.nodeType === 1 ? e.target : e.target.parentElement;
+    if (!t || !t.closest('.note, input, textarea, select')) e.preventDefault();
   });
 
   document.addEventListener('keydown', (e) => {

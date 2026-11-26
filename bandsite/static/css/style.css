@@ -307,6 +307,11 @@ body.editor-page { background: linear-gradient(180deg, #5b6a9c, #2a3a72); backgr
 #editor[data-tool=text] .note { outline: 1px dashed rgba(24,35,58,.45); }
 #editor[data-tool=eraser] .note { cursor: pointer; }
 #editor[data-tool=eraser] .note:hover { outline: 2px solid var(--danger); }
+/* Tablet + pen: no text selection, magnifier or copy menu while drawing or turning pages */
+body.editor-page { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+body.editor-page .page, body.editor-page .page canvas { -webkit-user-drag: none; }
+body.editor-page input, body.editor-page textarea, body.editor-page select { -webkit-user-select: auto; user-select: auto; }
+#editor[data-tool=text] .note { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; animation: none !important; } }
 
