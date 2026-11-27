@@ -103,6 +103,37 @@ def index():
     )
 
 
+@bp.post("/songs/singers")
+def bulk_singers():
+    """Adds (or removes) one or more singers for several selected songs at once."""
+    back = url_for(
+        "songs.index",
+        q=request.form.get("q") or None,
+        phase=request.form.get("phase") or None,
+        mood=request.form.get("mood") or None,
+    )
+    song_ids = db.existing_song_ids(sorted({int(x) for x in request.form.getlist("song_ids") if x.isdigit()}))
+    allowed = {m["id"]: m["name"] for m in db.list_members()}
+    member_ids = sorted({int(x) for x in request.form.getlist("singers") if x.isdigit() and int(x) in allowed})
+
+    if not song_ids:
+        flash("Select at least one song.", "error")
+        return redirect(back)
+    if not member_ids:
+        flash("Choose at least one singer.", "error")
+        return redirect(back)
+
+    names = ", ".join(allowed[i] for i in member_ids)
+    songs_text = "1 song" if len(song_ids) == 1 else f"{len(song_ids)} songs"
+    if request.form.get("action") == "remove":
+        db.remove_singers_from_songs(song_ids, member_ids)
+        flash(f"Removed {names} as singer from {songs_text}.", "ok")
+    else:
+        db.add_singers_to_songs(song_ids, member_ids)
+        flash(f"Added {names} as singer to {songs_text}.", "ok")
+    return redirect(back)
+
+
 @bp.route("/songs/new", methods=["GET", "POST"])
 def new():
     options = _options()

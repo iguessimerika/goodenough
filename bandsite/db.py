@@ -510,6 +510,42 @@ def delete_song(song_id):
     return execute("DELETE FROM songs WHERE id = %s", (song_id,))
 
 
+def existing_song_ids(song_ids):
+    """Returns the subset of song_ids that really exist."""
+    if not song_ids:
+        return []
+    rows = fetch_all(
+        f"SELECT id FROM songs WHERE id IN ({', '.join(['%s'] * len(song_ids))})",
+        tuple(song_ids),
+    )
+    return [r["id"] for r in rows]
+
+
+def add_singers_to_songs(song_ids, member_ids):
+    """Adds every member as singer to every song. Existing singers stay, duplicates are skipped.
+    Returns the number of new song/singer pairs."""
+    if not song_ids or not member_ids:
+        return 0
+    with transaction() as cursor:
+        cursor.executemany(
+            "INSERT IGNORE INTO song_singers (song_id, member_id) VALUES (%s, %s)",
+            [(song_id, member_id) for song_id in song_ids for member_id in member_ids],
+        )
+        return cursor.rowcount
+
+
+def remove_singers_from_songs(song_ids, member_ids):
+    """Removes the members as singers from the songs. Returns the number of removed pairs."""
+    if not song_ids or not member_ids:
+        return 0
+    return execute(
+        f"""DELETE FROM song_singers
+            WHERE song_id IN ({', '.join(['%s'] * len(song_ids))})
+              AND member_id IN ({', '.join(['%s'] * len(member_ids))})""",
+        tuple(song_ids) + tuple(member_ids),
+    )
+
+
 # --------------------------------------------------------------------- documents (sheet music PDFs)
 
 def list_documents(song_id):
