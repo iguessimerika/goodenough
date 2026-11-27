@@ -26,9 +26,21 @@
 </form>
 
 {% if songs %}
+{% if members %}
+<div class="bulk-toolbar">
+  <label class="bulk-check"><input type="checkbox" id="bulk-all"> <span>Select all</span></label>
+  <span class="hint">Tick songs to add a singer to several songs at once.</span>
+</div>
+{% endif %}
 <ul class="song-list">
   {% for s in songs %}
-  <li class="song-row">
+  <li class="song-row{% if members %} selectable{% endif %}">
+    {% if members %}
+    <label class="bulk-check">
+      <span class="sr-only">Select {{ s.title }}</span>
+      <input type="checkbox" name="song_ids" value="{{ s.id }}" form="bulk-form">
+    </label>
+    {% endif %}
     <div>
       <h2><a href="{{ url_for('songs.detail', song_id=s.id) }}">{{ s.title }}</a></h2>
       <p class="by">{{ s.artist }}{% if s.singers %} · Vocals: {{ s.singers|map(attribute='name')|join(', ') }}{% endif %}</p>
@@ -47,6 +59,29 @@
   </li>
   {% endfor %}
 </ul>
+
+{% if members %}
+<form id="bulk-form" class="bulk-bar" method="post" action="{{ url_for('songs.bulk_singers') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="q" value="{{ q }}">
+  <input type="hidden" name="phase" value="{{ phase_id or '' }}">
+  <input type="hidden" name="mood" value="{{ mood_id or '' }}">
+  <fieldset>
+    <legend><span id="bulk-count">Selected songs</span> · Singer</legend>
+    <div class="choices">
+      {% for m in members %}
+      <label><input type="checkbox" name="singers" value="{{ m.id }}"><span>{{ m.name }}</span></label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <div class="bulk-actions">
+    <button class="btn primary" type="submit" name="action" value="add">Add singer</button>
+    <button class="btn" type="submit" name="action" value="remove">Remove singer</button>
+    <button class="btn small" type="button" id="bulk-clear">Clear selection</button>
+  </div>
+</form>
+<script src="{{ url_for('static', filename='js/bulk-singers.js') }}"></script>
+{% endif %}
 {% elif filtered %}
 <div class="empty">
   <h2>Nothing found</h2>
