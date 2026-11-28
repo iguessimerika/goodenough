@@ -59,7 +59,8 @@ appear, so the order on screen always matches the setlist.
 - **Whole page** fits one page on the screen; the choice is remembered on that device.
 - **Full screen** hides the browser bars. The screen stays on while the view is open (where the browser supports it).
 - **Download as one PDF** merges all PDFs of a set into one file with a bookmark per song, for apps
-  like forScore or for when there's no internet at the venue. The band's notes are not part of that file.
+  like forScore or for when there's no internet at the venue. The band's notes (pen, marker and text) are
+  drawn into the pages, so every PDF app shows and prints them. Add `?original=1` to the link for the file without notes.
 
 ## Rehearsals
 
@@ -81,6 +82,8 @@ appear, so the order on screen always matches the setlist.
 
 - Sheet-music PDFs are stored in the database (up to 16 MB), not on disk. Railway wipes files on every deploy; the database stays.
 - Notes in the editor are shared by the whole band. Saving checks whether someone saved in between.
+- **Download** on a song gives the PDF with the notes drawn in (`bandsite/pdf_notes.py`); **Original** gives it as uploaded.
+  Text notes use the built-in Helvetica font, so emoji and characters outside Western European ones show up as `?`.
 - `CREATE TABLE IF NOT EXISTS` adds new tables but never changes existing ones. Changing columns later needs a migration (an `ALTER TABLE`).
 - Table names are English (`members`, `songs`, …). If you already ran the German version against this database, use a fresh database or drop the old tables.
 - There is no limit on failed sign-in attempts.

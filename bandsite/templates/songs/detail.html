@@ -74,7 +74,8 @@
           <span class="name">{{ d.filename }}</span>
           <span class="tools">
             <a class="btn small primary" href="{{ url_for('songs.document_editor', document_id=d.id) }}">Open and annotate</a>
-            <a class="btn small" href="{{ url_for('songs.document_file', document_id=d.id, download=1) }}">Download</a>
+            <a class="btn small" href="{{ url_for('songs.document_file', document_id=d.id, download=1) }}" title="With the band's notes drawn in">Download</a>
+            <a class="btn small" href="{{ url_for('songs.document_file', document_id=d.id, download=1, original=1) }}" title="The PDF as uploaded, without notes">Original</a>
             <form method="post" action="{{ url_for('songs.delete_document', document_id=d.id) }}" onsubmit="return confirm('Delete “{{ d.filename }}” with its notes?')">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button class="btn small danger" type="submit">Delete</button>

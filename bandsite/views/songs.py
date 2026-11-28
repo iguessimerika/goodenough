@@ -4,10 +4,10 @@ from io import BytesIO
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, send_file, url_for
+from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
-from .. import db
+from .. import db, pdf_notes
 from ..utils import clean_annotations, split_video_title, youtube_id
 
 bp = Blueprint("songs", __name__)
@@ -241,8 +241,18 @@ def upload_document(song_id):
 @bp.get("/documents/<int:document_id>/file")
 def document_file(document_id):
     document = db.get_document_file(document_id) or abort(404)
+    data = document["data"]
+    # A download carries the band's notes; the editor and viewers load the clean original
+    # and draw the notes on top themselves. ?original=1 downloads the PDF without notes.
+    if request.args.get("download") == "1" and request.args.get("original") != "1":
+        stored = db.get_annotations(document_id) or {}
+        try:
+            data = pdf_notes.with_notes(data, stored.get("annotations"))
+        except Exception:  # broken or locked PDF: better the original than no file at all
+            current_app.logger.exception("Could not add notes to document %s", document_id)
+            flash("The notes couldn't be added to this PDF, so you got the original.", "error")
     response = send_file(
-        BytesIO(document["data"]),
+        BytesIO(data),
         mimetype="application/pdf",
         download_name=document["filename"],
         as_attachment=request.args.get("download") == "1",

@@ -7,7 +7,7 @@ import mysql.connector
 from flask import Blueprint, abort, flash, redirect, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 
-from .. import db
+from .. import db, pdf_notes
 
 bp = Blueprint("setlists", __name__)
 
@@ -279,15 +279,21 @@ def _download_name(text):
 def sheets_pdf(setlist_id, set_id=None):
     """All PDFs of a set (or the whole setlist) merged into one file, with a bookmark per song.
 
-    For apps like forScore or a venue without internet. The band's notes are not included.
+    For apps like forScore or a venue without internet. The band's notes are drawn into the pages;
+    ?original=1 leaves them out.
     """
     from pypdf import PdfReader, PdfWriter
 
     setlist = db.get_setlist_with_sheets(setlist_id) or abort(404)
     sets = _sets_to_show(setlist, set_id)
 
+    with_notes = request.args.get("original") != "1"
+    document_ids = [d["id"] for one_set in sets for entry in one_set["songs"] for d in entry["documents"]]
+    annotations = db.get_annotations_for(document_ids) if with_notes else {}
+
     writer = PdfWriter()
     skipped = []
+    without_notes = []
     bookmarks = []  # (set name, [(song label, first page), …]); added once all pages exist
     for one_set in sets:
         song_marks = []
@@ -301,10 +307,17 @@ def sheets_pdf(setlist_id, set_id=None):
                     reader = PdfReader(BytesIO(file["data"]))
                     if reader.is_encrypted:
                         reader.decrypt("")
+                    start = len(writer.pages)
                     for page in reader.pages:
                         writer.add_page(page)
                 except Exception:  # one broken or locked PDF must not break the whole download
                     skipped.append(d["filename"])
+                    continue
+                if pdf_notes.has_notes(annotations.get(d["id"])):
+                    try:
+                        pdf_notes.add_notes_to_pages(writer.pages[start:], annotations.get(d["id"]))
+                    except Exception:  # the sheet is still useful without its notes
+                        without_notes.append(d["filename"])
             if len(writer.pages) > first_page:
                 song_marks.append((f"{number}. {entry['title']}", first_page))
         if song_marks:
@@ -320,6 +333,8 @@ def sheets_pdf(setlist_id, set_id=None):
             writer.add_outline_item(label, page, parent=parent)
     if skipped:
         flash("These PDFs couldn't be read and are missing from the download: " + ", ".join(skipped), "error")
+    if without_notes:
+        flash("The notes couldn't be added to: " + ", ".join(without_notes), "error")
 
     output = BytesIO()
     writer.write(output)

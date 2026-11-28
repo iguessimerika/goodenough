@@ -10,7 +10,7 @@
   <div class="head-actions">
     {% if setlist.document_count %}
     <a class="btn primary" href="{{ url_for('setlists.sheets', setlist_id=setlist.id) }}">Open all sheet music</a>
-    <a class="btn" href="{{ url_for('setlists.sheets_pdf', setlist_id=setlist.id) }}" title="All sets in one file, for offline use. Your notes aren't included.">Download as one PDF</a>
+    <a class="btn" href="{{ url_for('setlists.sheets_pdf', setlist_id=setlist.id) }}" title="All sets in one file with the band's notes, for offline use.">Download as one PDF</a>
     {% endif %}
     <form method="post" action="{{ url_for('setlists.pin', setlist_id=setlist.id) }}" style="display:inline">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -39,7 +39,7 @@
     <span class="set-tools">
       {% if one_set.document_count %}
       <a class="btn small primary" href="{{ url_for('setlists.sheets', setlist_id=setlist.id, set_id=one_set.id) }}">Open sheet music</a>
-      <a class="btn small" href="{{ url_for('setlists.sheets_pdf', setlist_id=setlist.id, set_id=one_set.id) }}" title="All PDFs of this set as one file, for offline use. Your notes aren't included.">Download as one PDF</a>
+      <a class="btn small" href="{{ url_for('setlists.sheets_pdf', setlist_id=setlist.id, set_id=one_set.id) }}" title="All PDFs of this set as one file with the band's notes, for offline use.">Download as one PDF</a>
       {% endif %}
       <form method="post" action="{{ url_for('setlists.move_set', set_id=one_set.id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
